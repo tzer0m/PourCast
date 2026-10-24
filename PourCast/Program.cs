@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PourCast.Providers;
@@ -10,6 +11,7 @@ using PourCast.Providers.PirateWeather;
 using PourCast.Providers.TomorrowIo;
 using PourCast.Providers.VisualCrossing;
 using PourCast.Providers.WeatherApi;
+using PourCast.Scoring.Data;
 using PourCast.Services;
 using PourCast.Services.Geocoding;
 using PourCast.Services.Usage;
@@ -52,8 +54,15 @@ builder.Services.AddTransient<WeatherService>();
 builder.Services.Configure<GeocodingOptions>(builder.Configuration.GetSection("Geocoding"));
 builder.Services.AddHttpClient<GeocodingService>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<GeocodingOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => new UsageHandler(services.GetRequiredService<UsageTracker>(), services.GetRequiredService<IOptions<GeocodingOptions>>().Value.UsageKey, services.GetRequiredService<IOptions<GeocodingOptions>>().Value.DailyLimit));
 
-// Create the web application and configure.
+// Register the scoring database, where forecasts and observations are recorded.
+builder.Services.AddDbContext<ScoringDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("PourCast")));
+
+// Create the web application, bring the database up to date and configure.
 WebApplication app = builder.Build();
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<ScoringDbContext>().Database.Migrate();
+}
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
