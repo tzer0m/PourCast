@@ -621,6 +621,13 @@ body {
   text-anchor: middle;
 }
 
+.day-label {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
 .time-now {
   fill: var(--text);
   font-weight: 700;

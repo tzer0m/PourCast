@@ -30,10 +30,18 @@ const chartLayout = {
   minimumRainScale: 0.5
 };
 
+// Adds a row at the top for day names, pushing everything else down. Used by the 7 day view.
+function withDayRow(base) {
+  const rowHeight = 20;
+  const shifted = { ...base };
+  ["timeY", "iconY", "sunY", "temperatureTop", "temperatureBottom", "rainTop", "rainBottom", "uvTop", "uvBottom", "humidityTop", "humidityBottom", "windTop", "windBottom", "windArrowY", "height"].forEach(key => shifted[key] = base[key] + rowHeight);
+  shifted.dayY = base.timeY;
+  return shifted;
+}
+
 // Stretches the chart sections to fill the dashboard row on wide screens. The row fills the window height,
 // or the summary column's height if that is taller.
-function fitLayout() {
-  const base = chartLayout;
+function fitLayout(base) {
   if (window.matchMedia("(max-width: 900px)").matches) return base;
   stripElement.setAttribute("height", 0);
   axisElement.setAttribute("height", 0);
@@ -65,7 +73,7 @@ export function renderChart(hours, daylight, stepHours) {
     return false;
   }
   document.getElementById("dashboard").hidden = false;
-  const layout = fitLayout();
+  const layout = fitLayout(stepHours > 1 ? withDayRow(chartLayout) : chartLayout);
 
   // Temperature scale snapped to tidy steps.
   const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
@@ -194,7 +202,8 @@ export function renderChart(hours, daylight, stepHours) {
     if (isDayStart && i > 0) {
       stripElement.appendChild(svg("line", { class: "day-divider", x1: i * columnWidth, x2: i * columnWidth, y1: 8, y2: layout.height - 8 }));
     }
-    const label = isNow ? "Now" : isDayStart && (stepHours > 1 || i > 0) ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
+    // The 7 day view has its own day row above, so its columns always show the time.
+    const label = isNow ? "Now" : stepHours === 1 && isDayStart && i > 0 ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
     const icon = conditionIcons[h.condition] ?? conditionIcons.Unknown;
     const night = isNight(new Date((time.getTime() + new Date(h.end).getTime()) / 2));
@@ -208,6 +217,20 @@ export function renderChart(hours, daylight, stepHours) {
       stripElement.appendChild(arrow);
     }
   });
+
+  // Day names centred over each day's columns in the 7 day view, e.g. "Sat 24".
+  if (stepHours > 1) {
+    const days = [];
+    hours.forEach((h, i) => {
+      const time = new Date(h.time);
+      if (i === 0 || time.getHours() === 6) days.push({ start: i, time });
+      days[days.length - 1].end = i;
+    });
+    days.forEach(day => {
+      const x = (day.start + day.end + 1) / 2 * columnWidth;
+      stripElement.appendChild(svg("text", { class: "day-label", x, y: layout.dayY }, day.time.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })));
+    });
+  }
 
   // Temperature range band and average line.
   const maxPoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureMax)]);
