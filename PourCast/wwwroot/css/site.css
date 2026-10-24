@@ -848,9 +848,6 @@ body {
   stroke-linejoin: round;
 }
 
-.rain-area {
-  fill: rgba(var(--rain), 0.2);
-}
 
 .range-rain {
   fill: rgb(var(--rain));

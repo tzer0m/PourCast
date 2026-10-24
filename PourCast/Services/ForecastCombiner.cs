@@ -12,10 +12,11 @@ public static class ForecastCombiner
     /// </summary>
     /// <param name="forecasts">The forecasts to combine.</param>
     /// <param name="windows">The column windows, in time order.</param>
-    public static List<HourlySummary> Combine(List<Forecast> forecasts, List<ColumnWindow> windows)
+    /// <param name="options">How the band is trimmed.</param>
+    public static List<HourlySummary> Combine(List<Forecast> forecasts, List<ColumnWindow> windows, CombiningOptions options)
     {
-        // Ensemble spreads use the 10th to 90th percentile; normal sources use the full min to max.
-        bool percentiles = forecasts.Any(x => x.IsEnsemble);
+        // Ensembles always use their percentiles; normal sources use percentiles once there are enough of them, otherwise min to max.
+        bool ensemble = forecasts.Any(x => x.IsEnsemble);
         List<DateTimeOffset> starts = windows.Select(x => x.Start).ToList();
 
         // Each series is one source, or one member of an ensemble, with its hours bucketed by column.
@@ -26,7 +27,7 @@ public static class ForecastCombiner
             List<HourlyForecast> values = series.Where(x => x.ContainsKey(i)).Select(x => Aggregate(x[i])).ToList();
             if (values.Count > 0)
             {
-                result.Add(Summarise(values, windows[i], percentiles));
+                result.Add(Summarise(values, windows[i], ensemble, options));
             }
         }
         return result;
@@ -95,18 +96,19 @@ public static class ForecastCombiner
     /// </summary>
     /// <param name="values">One summarised value per series.</param>
     /// <param name="window">The column window.</param>
-    /// <param name="percentiles">Whether to use the 10th to 90th percentile instead of min to max.</param>
-    private static HourlySummary Summarise(List<HourlyForecast> values, ColumnWindow window, bool percentiles)
+    /// <param name="ensemble">Whether the values are ensemble members.</param>
+    /// <param name="options">How the band is trimmed.</param>
+    private static HourlySummary Summarise(List<HourlyForecast> values, ColumnWindow window, bool ensemble, CombiningOptions options)
     {
-        (double? Average, double? Low, double? High) temperature = Spread(values.Select(x => x.Temperature), percentiles);
-        (double? Average, double? Low, double? High) feelsLike = Spread(values.Select(x => x.FeelsLike), percentiles);
-        (double? Average, double? Low, double? High) humidity = Spread(values.Select(x => x.Humidity), percentiles);
-        (double? Average, double? Low, double? High) windSpeed = Spread(values.Select(x => x.WindSpeed), percentiles);
-        (double? Average, double? Low, double? High) windGust = Spread(values.Select(x => x.WindGust), percentiles);
-        (double? Average, double? Low, double? High) uvIndex = Spread(values.Select(x => x.UvIndex), percentiles);
-        (double? Average, double? Low, double? High) uvIndexClearSky = Spread(values.Select(x => x.UvIndexClearSky), percentiles);
-        (double? Average, double? Low, double? High) precipitation = Spread(values.Select(x => x.Precipitation), percentiles);
-        (double? Average, double? Low, double? High) probability = Spread(values.Select(x => x.PrecipitationProbability), percentiles);
+        (double? Average, double? Low, double? High) temperature = Spread(values.Select(x => x.Temperature), ensemble, options);
+        (double? Average, double? Low, double? High) feelsLike = Spread(values.Select(x => x.FeelsLike), ensemble, options);
+        (double? Average, double? Low, double? High) humidity = Spread(values.Select(x => x.Humidity), ensemble, options);
+        (double? Average, double? Low, double? High) windSpeed = Spread(values.Select(x => x.WindSpeed), ensemble, options);
+        (double? Average, double? Low, double? High) windGust = Spread(values.Select(x => x.WindGust), ensemble, options);
+        (double? Average, double? Low, double? High) uvIndex = Spread(values.Select(x => x.UvIndex), ensemble, options);
+        (double? Average, double? Low, double? High) uvIndexClearSky = Spread(values.Select(x => x.UvIndexClearSky), ensemble, options);
+        (double? Average, double? Low, double? High) precipitation = Spread(values.Select(x => x.Precipitation), ensemble, options);
+        (double? Average, double? Low, double? High) probability = Spread(values.Select(x => x.PrecipitationProbability), ensemble, options);
         return new HourlySummary
         {
             Time = window.Start,
@@ -139,8 +141,8 @@ public static class ForecastCombiner
             PrecipitationMin = precipitation.Low,
             PrecipitationMax = precipitation.High,
             PrecipitationProbabilityAverage = probability.Average,
-            PrecipitationProbabilityMin = percentiles ? null : probability.Low,
-            PrecipitationProbabilityMax = percentiles ? null : probability.High
+            PrecipitationProbabilityMin = ensemble ? null : probability.Low,
+            PrecipitationProbabilityMax = ensemble ? null : probability.High
         };
     }
 
@@ -148,15 +150,24 @@ public static class ForecastCombiner
     /// Returns the average and the spread of the values, or nulls if there are none.
     /// </summary>
     /// <param name="values">The values, which may include nulls.</param>
-    /// <param name="percentiles">Whether the spread is the 10th to 90th percentile instead of min to max.</param>
-    private static (double? Average, double? Low, double? High) Spread(IEnumerable<double?> values, bool percentiles)
+    /// <param name="ensemble">Whether the values are ensemble members.</param>
+    /// <param name="options">How the band is trimmed.</param>
+    private static (double? Average, double? Low, double? High) Spread(IEnumerable<double?> values, bool ensemble, CombiningOptions options)
     {
         List<double> list = values.Where(x => x is not null).Select(x => x!.Value).Order().ToList();
         if (list.Count == 0)
         {
             return (null, null, null);
         }
-        return percentiles ? (list.Average(), Percentile(list, 0.1), Percentile(list, 0.9)) : (list.Average(), list[0], list[^1]);
+        if (ensemble)
+        {
+            return (list.Average(), Percentile(list, options.EnsembleLowPercentile), Percentile(list, options.EnsembleHighPercentile));
+        }
+        if (list.Count >= options.PercentileMinimumSources)
+        {
+            return (list.Average(), Percentile(list, options.LowPercentile), Percentile(list, options.HighPercentile));
+        }
+        return (list.Average(), list[0], list[^1]);
     }
 
     /// <summary>

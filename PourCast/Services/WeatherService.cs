@@ -13,9 +13,10 @@ namespace PourCast.Services;
 /// <param name="providers">The registered weather providers.</param>
 /// <param name="usage">The API usage tracker.</param>
 /// <param name="usageOptions">The usage options, for how long to remember failures.</param>
+/// <param name="combiningOptions">How sources are combined into the line and band.</param>
 /// <param name="cache">The memory cache, used to remember recent failures.</param>
 /// <param name="logger">The logger.</param>
-public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracker usage, IOptions<UsageOptions> usageOptions, IMemoryCache cache, ILogger<WeatherService> logger)
+public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracker usage, IOptions<UsageOptions> usageOptions, IOptions<CombiningOptions> combiningOptions, IMemoryCache cache, ILogger<WeatherService> logger)
 {
     /// <summary>
     /// Gets forecasts for a location from all providers in parallel and combines them.
@@ -29,8 +30,8 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     {
         ProviderResult[] results = await GatherAsync(latitude, longitude, range, cancellationToken);
         List<Forecast> forecasts = results.Where(x => x.Forecast is not null).Select(x => x.Forecast!).ToList();
-        List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts));
-        List<HourlySummary> columns = ForecastCombiner.Combine(forecasts, ColumnBuilder.ForRange(range, timeZone, DateTimeOffset.UtcNow));
+        List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts), combiningOptions.Value);
+        List<HourlySummary> columns = ForecastCombiner.Combine(forecasts, ColumnBuilder.ForRange(range, timeZone, DateTimeOffset.UtcNow), combiningOptions.Value);
         List<Daylight> daylight = SunCalculator.Calculate(latitude, longitude, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), range == ForecastRange.Month ? 38 : 10);
         string? locationName = results.Select(x => x.Forecast?.LocationName).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
         return new WeatherReport { LocationName = locationName, Sources = [.. results], Hourly = hourly, Columns = columns, Daylight = daylight };

@@ -39,6 +39,7 @@ builder.Services.Configure<WeatherApiOptions>(builder.Configuration.GetSection("
 builder.Services.AddHttpClient<IWeatherProvider, WeatherApiProvider>("WeatherApi", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<WeatherApiOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<WeatherApiOptions>>().Value));
 builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
+builder.Services.Configure<CombiningOptions>(builder.Configuration.GetSection("Combining"));
 builder.Services.AddTransient<WeatherService>();
 
 // Register place search.

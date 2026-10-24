@@ -266,7 +266,7 @@ export function renderChart(hours, daylight, stepHours) {
   band("range-uv range-uv-clear-sky", "uvIndexClearSkyMin", "uvIndexClearSkyMax", uvY);
   band("range-humidity", "humidityMin", "humidityMax", humidityY);
 
-  // Rain as a line with a shaded area underneath and a min/max band.
+  // Rain as a line with a min/max band.
   const rainHours = hours.map((h, i) => [i, h]).filter(([, h]) => h.precipitationAverage !== null);
   if (rainHours.length > 1) {
     const rainRange = rainHours.filter(([, h]) => h.precipitationMin !== null && h.precipitationMax !== null);
@@ -276,9 +276,6 @@ export function renderChart(hours, daylight, stepHours) {
       stripElement.appendChild(svg("path", { class: "range-band range-rain", d: `${linearPath(upper)} ${linearPath(lower, false)} Z` }));
     }
     const rainPoints = rainHours.map(([i, h]) => [centre(i), rainY(h.precipitationAverage)]);
-    const firstX = rainPoints[0][0];
-    const lastX = rainPoints[rainPoints.length - 1][0];
-    stripElement.appendChild(svg("path", { class: "rain-area", d: `${linearPath(rainPoints)} L ${lastX} ${layout.rainBottom} L ${firstX} ${layout.rainBottom} Z` }));
     stripElement.appendChild(svg("path", { class: "rain-line", d: linearPath(rainPoints) }));
   }
 
