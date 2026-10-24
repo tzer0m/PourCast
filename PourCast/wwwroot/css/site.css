@@ -9,6 +9,7 @@
   --temperature: #f97316;
   --feels-like: #e0457b;
   --uv: #8b5cf6;
+  --humidity: #14b8a6;
   --rain: 59, 130, 246;
   --night: rgba(40, 52, 90, 0.07);
   --sun: #e0a100;
@@ -225,6 +226,14 @@ body {
   fill: var(--muted);
   font-size: 11px;
   text-anchor: middle;
+}
+
+.humidity-line {
+  fill: none;
+  stroke: var(--humidity);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.85;
 }
 
 .temperature-point {

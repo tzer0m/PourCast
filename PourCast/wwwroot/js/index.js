@@ -8,7 +8,7 @@ const layout = {
   minimumColumnWidth: 56,
   axisWidth: 24,
   minimumUvScale: 4,
-  height: 532,
+  height: 636,
   timeY: 22,
   iconY: 30,
   iconSize: 36,
@@ -20,8 +20,10 @@ const layout = {
   temperatureBottom: 298,
   uvTop: 332,
   uvBottom: 400,
-  rainTop: 434,
-  rainBottom: 508,
+  humidityTop: 434,
+  humidityBottom: 502,
+  rainTop: 536,
+  rainBottom: 610,
   minimumRainScale: 2
 };
 
@@ -210,6 +212,14 @@ function renderStrip(hourly, daylight) {
   });
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 14 }, "UV"));
 
+  // Humidity section between UV and rain.
+  const humidityY = rh => layout.humidityBottom - rh / 100 * (layout.humidityBottom - layout.humidityTop);
+  [0, 50, 100].forEach(rh => {
+    stripElement.appendChild(svg("line", { class: rh === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: humidityY(rh), y2: humidityY(rh) }));
+    axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: humidityY(rh) + 4 }, `${rh}`));
+  });
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.humidityTop - 14 }, "%"));
+
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {
     const time = new Date(h.time);
@@ -256,6 +266,10 @@ function renderStrip(hourly, daylight) {
   const uvClearSkyPoints = hours.map((h, i) => [centre(i), h.uvIndexClearSkyAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
   if (uvClearSkyPoints.length > 1) {
     stripElement.appendChild(svg("path", { class: "uv-line uv-clear-sky", d: smoothPath(uvClearSkyPoints) }));
+  }
+  const humidityPoints = hours.map((h, i) => [centre(i), h.humidityAverage]).filter(([, rh]) => rh !== null).map(([x, rh]) => [x, humidityY(rh)]);
+  if (humidityPoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "humidity-line", d: smoothPath(humidityPoints) }));
   }
   if (uvPoints.length > 1) {
     stripElement.appendChild(svg("path", { class: "uv-line", d: smoothPath(uvPoints) }));

@@ -46,6 +46,11 @@ public class HourlySummary
     public double? WindSpeedAverage { get; set; }
 
     /// <summary>
+    /// Average relative humidity across sources in percent.
+    /// </summary>
+    public double? HumidityAverage { get; set; }
+
+    /// <summary>
     /// Average UV index across sources.
     /// </summary>
     public double? UvIndexAverage { get; set; }
