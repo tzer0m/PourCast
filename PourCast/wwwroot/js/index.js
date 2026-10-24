@@ -6,24 +6,25 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 // Chart geometry in pixels.
 const layout = {
   minimumColumnWidth: 56,
-  axisWidth: 24,
+  axisWidth: 28,
   minimumUvScale: 4,
-  height: 636,
+  height: 690,
   timeY: 22,
   iconY: 30,
   iconSize: 36,
-  temperatureLabelY: 90,
-  feelsLikeLabelY: 110,
-  windLabelY: 128,
-  sunY: 150,
-  temperatureTop: 168,
-  temperatureBottom: 298,
-  uvTop: 332,
-  uvBottom: 400,
-  humidityTop: 434,
-  humidityBottom: 502,
-  rainTop: 536,
-  rainBottom: 610,
+  sunY: 88,
+  temperatureTop: 106,
+  temperatureBottom: 236,
+  uvTop: 270,
+  uvBottom: 338,
+  humidityTop: 372,
+  humidityBottom: 440,
+  rainTop: 474,
+  rainBottom: 548,
+  windTop: 582,
+  windBottom: 650,
+  windArrowY: 670,
+  minimumWindScale: 20,
   minimumRainScale: 2
 };
 
@@ -69,6 +70,11 @@ function svg(tag, attributes = {}, text) {
   Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function compass(degrees) {
+  const points = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  return points[Math.round(degrees / 22.5) % 16];
 }
 
 function hourLabel(date) {
@@ -177,13 +183,13 @@ function renderStrip(hourly, daylight) {
   nights.forEach(([from, to]) => {
     const x1 = Math.max(0, timeX(from));
     const x2 = Math.min(width, timeX(to));
-    if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.rainBottom }));
+    if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.windBottom }));
   });
   daylight.flatMap(d => [["sunrise", d.sunrise], ["sunset", d.sunset]]).filter(([, value]) => value).forEach(([kind, value]) => {
     const time = new Date(value);
     const x = timeX(time);
     if (x < 0 || x > width) return;
-    stripElement.appendChild(svg("line", { class: "sun-line", x1: x, x2: x, y1: layout.sunY + 6, y2: layout.rainBottom }));
+    stripElement.appendChild(svg("line", { class: "sun-line", x1: x, x2: x, y1: layout.sunY + 6, y2: layout.windBottom }));
     const label = svg("text", { class: "sun-label", x: x + 4, y: layout.sunY }, `${kind === "sunrise" ? "↑" : "↓"} ${clockTime(time)}`);
     label.appendChild(svg("title", {}, `${kind === "sunrise" ? "Sunrise" : "Sunset"} ${clockTime(time)}`));
     stripElement.appendChild(label);
@@ -217,6 +223,16 @@ function renderStrip(hourly, daylight) {
   });
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 14 }, "UV"));
 
+  // Wind section below rain.
+  const windValues = hours.flatMap(h => [h.windSpeedMax, h.windGustMax]).filter(w => w !== null);
+  const windScale = Math.ceil(Math.max(layout.minimumWindScale, ...windValues) / 10) * 10;
+  const windY = mph => layout.windBottom - mph / windScale * (layout.windBottom - layout.windTop);
+  [0, windScale / 2, windScale].forEach(mph => {
+    stripElement.appendChild(svg("line", { class: mph === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: windY(mph), y2: windY(mph) }));
+    axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: windY(mph) + 4 }, `${mph}`));
+  });
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.windTop - 14 }, "mph"));
+
   // Humidity section between UV and rain.
   const humidityY = rh => layout.humidityBottom - rh / 100 * (layout.humidityBottom - layout.humidityTop);
   [0, 50, 100].forEach(rh => {
@@ -240,12 +256,11 @@ function renderStrip(hourly, daylight) {
     const image = svg("image", { class: "condition-icon", href: `/icons/${night ? icon[1] : icon[0]}.svg`, x: centre(i) - layout.iconSize / 2, y: layout.iconY, width: layout.iconSize, height: layout.iconSize });
     image.appendChild(svg("title", {}, conditionLabels[h.condition] ?? h.condition));
     stripElement.appendChild(image);
-    stripElement.appendChild(svg("text", { class: "temperature-label", x: centre(i), y: layout.temperatureLabelY }, `${Math.round(h.temperatureAverage)}°`));
-    if (h.feelsLikeAverage !== null) {
-      stripElement.appendChild(svg("text", { class: "feels-like-value", x: centre(i), y: layout.feelsLikeLabelY }, `${Math.round(h.feelsLikeAverage)}°`));
-    }
-    if (h.windSpeedAverage !== null) {
-      stripElement.appendChild(svg("text", { class: "wind-value", x: centre(i), y: layout.windLabelY }, `${Math.round(h.windSpeedAverage)} mph`));
+    if (h.windDirectionAverage !== null) {
+      // Arrow points the way the wind is blowing, i.e. opposite to where it comes from.
+      const arrow = svg("path", { class: "wind-arrow", d: "M 0 -7 L 5 4 L 0 2 L -5 4 Z", transform: `translate(${centre(i)} ${layout.windArrowY}) rotate(${h.windDirectionAverage + 180})` });
+      arrow.appendChild(svg("title", {}, `From ${compass(h.windDirectionAverage)}`));
+      stripElement.appendChild(arrow);
     }
   });
 
@@ -287,6 +302,16 @@ function renderStrip(hourly, daylight) {
   // Chance of rain as a dashed line on a 0-100% scale across the rain section.
   const chanceY = pct => layout.rainBottom - pct / 100 * (layout.rainBottom - layout.rainTop);
   band("range-rain", "precipitationProbabilityMin", "precipitationProbabilityMax", chanceY);
+  band("range-wind", "windSpeedMin", "windSpeedMax", windY);
+  band("range-wind range-wind-gust", "windGustMin", "windGustMax", windY);
+  const windPoints = hours.map((h, i) => [centre(i), h.windSpeedAverage]).filter(([, w]) => w !== null).map(([x, w]) => [x, windY(w)]);
+  const gustPoints = hours.map((h, i) => [centre(i), h.windGustAverage]).filter(([, w]) => w !== null).map(([x, w]) => [x, windY(w)]);
+  if (gustPoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "wind-line wind-gust", d: linearPath(gustPoints) }));
+  }
+  if (windPoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "wind-line", d: linearPath(windPoints) }));
+  }
   const chancePoints = hours.map((h, i) => [centre(i), h.precipitationProbabilityAverage]).filter(([, pct]) => pct !== null).map(([x, pct]) => [x, chanceY(pct)]);
   if (chancePoints.length > 1) {
     stripElement.appendChild(svg("path", { class: "chance-line", d: linearPath(chancePoints) }));
@@ -325,6 +350,12 @@ function renderStrip(hourly, daylight) {
     }
     if (h.uvIndexAverage !== null) {
       valueLabel("value-uv", x, uvY(h.uvIndexAverage), !clearSkyAbove || h.uvIndexClearSkyAverage === null, h.uvIndexAverage.toFixed(1));
+    }
+    if (h.windGustAverage !== null) {
+      valueLabel("value-wind value-wind-gust", x, windY(h.windGustAverage), true, `${Math.round(h.windGustAverage)}`);
+    }
+    if (h.windSpeedAverage !== null) {
+      valueLabel("value-wind", x, windY(h.windSpeedAverage), h.windGustAverage === null, `${Math.round(h.windSpeedAverage)}`);
     }
     const rain = h.precipitationAverage ?? 0;
     const chance = h.precipitationProbabilityAverage;

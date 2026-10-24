@@ -56,6 +56,36 @@ public class HourlySummary
     public double? WindSpeedAverage { get; set; }
 
     /// <summary>
+    /// Lowest wind speed across sources in mph.
+    /// </summary>
+    public double? WindSpeedMin { get; set; }
+
+    /// <summary>
+    /// Highest wind speed across sources in mph.
+    /// </summary>
+    public double? WindSpeedMax { get; set; }
+
+    /// <summary>
+    /// Average wind gust speed across sources in mph.
+    /// </summary>
+    public double? WindGustAverage { get; set; }
+
+    /// <summary>
+    /// Lowest wind gust speed across sources in mph.
+    /// </summary>
+    public double? WindGustMin { get; set; }
+
+    /// <summary>
+    /// Highest wind gust speed across sources in mph.
+    /// </summary>
+    public double? WindGustMax { get; set; }
+
+    /// <summary>
+    /// Average wind direction across sources in degrees, the direction the wind is coming from.
+    /// </summary>
+    public double? WindDirectionAverage { get; set; }
+
+    /// <summary>
     /// Average relative humidity across sources in percent.
     /// </summary>
     public double? HumidityAverage { get; set; }

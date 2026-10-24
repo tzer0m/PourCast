@@ -10,6 +10,7 @@
   --feels-like: #e0457b;
   --uv: #8b5cf6;
   --humidity: #14b8a6;
+  --wind: #94a3b8;
   --rain: 59, 130, 246;
   --night: rgba(40, 52, 90, 0.07);
   --sun: #e0a100;
@@ -138,12 +139,6 @@ body {
   font-weight: 700;
 }
 
-.temperature-label {
-  fill: var(--text);
-  font-size: 20px;
-  font-weight: 600;
-  text-anchor: middle;
-}
 
 .temperature-range {
   fill: var(--temperature);
@@ -167,12 +162,6 @@ body {
 }
 
 
-.feels-like-value {
-  fill: var(--feels-like);
-  font-size: 13px;
-  font-weight: 600;
-  text-anchor: middle;
-}
 
 .uv-line {
   fill: none;
@@ -222,11 +211,6 @@ body {
   background: var(--key);
 }
 
-.wind-value {
-  fill: var(--muted);
-  font-size: 11px;
-  text-anchor: middle;
-}
 
 .humidity-line {
   fill: none;
@@ -317,6 +301,39 @@ body {
 
 .value-rain {
   fill: rgb(var(--rain));
+}
+
+.wind-arrow {
+  fill: var(--wind);
+}
+
+.wind-line {
+  fill: none;
+  stroke: var(--wind);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wind-gust {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+
+.range-wind {
+  fill: var(--wind);
+}
+
+.range-wind-gust {
+  opacity: 0.08;
+}
+
+.value-wind {
+  fill: var(--wind);
+}
+
+.value-wind-gust {
+  opacity: 0.75;
 }
 
 .temperature-point {

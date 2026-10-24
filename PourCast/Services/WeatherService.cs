@@ -57,6 +57,8 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         List<double> uvIndex = hour.Where(x => x.UvIndex is not null).Select(x => x.UvIndex!.Value).ToList();
         List<double> uvIndexClearSky = hour.Where(x => x.UvIndexClearSky is not null).Select(x => x.UvIndexClearSky!.Value).ToList();
         List<double> windSpeed = hour.Where(x => x.WindSpeed is not null).Select(x => x.WindSpeed!.Value).ToList();
+        List<double> windGust = hour.Where(x => x.WindGust is not null).Select(x => x.WindGust!.Value).ToList();
+        List<double> windDirection = hour.Where(x => x.WindDirection is not null).Select(x => x.WindDirection!.Value).ToList();
         List<double> humidity = hour.Where(x => x.Humidity is not null).Select(x => x.Humidity!.Value).ToList();
         List<double> precipitation = hour.Where(x => x.Precipitation is not null).Select(x => x.Precipitation!.Value).ToList();
         List<double> probabilities = hour.Where(x => x.PrecipitationProbability is not null).Select(x => x.PrecipitationProbability!.Value).ToList();
@@ -78,6 +80,12 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
             UvIndexClearSkyMin = Min(uvIndexClearSky),
             UvIndexClearSkyMax = Max(uvIndexClearSky),
             WindSpeedAverage = Average(windSpeed),
+            WindSpeedMin = Min(windSpeed),
+            WindSpeedMax = Max(windSpeed),
+            WindGustAverage = Average(windGust),
+            WindGustMin = Min(windGust),
+            WindGustMax = Max(windGust),
+            WindDirectionAverage = AverageDirection(windDirection),
             HumidityAverage = Average(humidity),
             HumidityMin = Min(humidity),
             HumidityMax = Max(humidity),
@@ -97,6 +105,22 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
     private static double? Average(List<double> values)
     {
         return values.Count > 0 ? values.Average() : null;
+    }
+
+    /// <summary>
+    /// Returns the circular mean of compass directions, or null if there are none.
+    /// </summary>
+    /// <param name="degrees">The directions in degrees.</param>
+    private static double? AverageDirection(List<double> degrees)
+    {
+        if (degrees.Count == 0)
+        {
+            return null;
+        }
+        double sin = degrees.Average(x => Math.Sin(x * Math.PI / 180));
+        double cos = degrees.Average(x => Math.Cos(x * Math.PI / 180));
+        double result = Math.Atan2(sin, cos) * 180 / Math.PI;
+        return result < 0 ? result + 360 : result;
     }
 
     /// <summary>
