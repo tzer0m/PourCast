@@ -443,12 +443,14 @@ function periodStats(period, key) {
   if (entries.length === 0) return null;
   const values = entries.map(([, v]) => v);
   const maxEntry = entries.reduce((best, entry) => entry[1] > best[1] ? entry : best);
+  const minEntry = entries.reduce((best, entry) => entry[1] < best[1] ? entry : best);
   return {
     min: Math.min(...values),
     max: Math.max(...values),
     avg: values.reduce((sum, v) => sum + v, 0) / values.length,
     total: values.reduce((sum, v) => sum + v, 0),
-    peakTime: new Date(maxEntry[0].time)
+    peakTime: new Date(maxEntry[0].time),
+    lowTime: new Date(minEntry[0].time)
   };
 }
 
@@ -471,15 +473,31 @@ function statsTable(columns, rows) {
 
 function summaryTile(title, colour, headline, secondary, table, highlight) {
   const tile = element("article", "tile");
-  const heading = element("h3", "tile-title", title);
-  heading.style.setProperty("--key", colour);
-  tile.appendChild(heading);
+  tile.style.setProperty("--key", colour);
+  // Title and current value on the left, highlights top right alongside both.
   const main = element("div", "tile-main");
-  main.appendChild(element("span", "tile-headline", headline));
-  main.appendChild(element("span", "tile-secondary", secondary ? `Now · ${secondary}` : "Now"));
+  const left = element("div");
+  left.appendChild(element("h3", "tile-title", title));
+  const current = element("div", "tile-current");
+  current.appendChild(element("span", "tile-headline", headline));
+  if (secondary) current.appendChild(element("span", "tile-secondary", secondary));
+  left.appendChild(current);
+  main.appendChild(left);
+  // Highlights are [value, time, tooltip]: a big value with the time next to it, stacked top right.
+  const highlights = (highlight ?? []).filter(Boolean);
+  if (highlights.length > 0) {
+    const stack = element("div", "tile-highlights");
+    highlights.forEach(([highlightValue, highlightTime, tooltip]) => {
+      const peak = element("span", "tile-highlight");
+      peak.title = tooltip;
+      peak.appendChild(element("span", "tile-highlight-value", highlightValue));
+      if (highlightTime) peak.appendChild(element("span", "tile-highlight-time", highlightTime));
+      stack.appendChild(peak);
+    });
+    main.appendChild(stack);
+  }
   tile.appendChild(main);
   tile.appendChild(table);
-  if (highlight) tile.appendChild(element("p", "tile-detail", highlight));
   return tile;
 }
 
@@ -503,25 +521,52 @@ function renderSummary(hourly, daylight) {
   const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
   const at = date => hourLabel(date);
 
-  // Low / Avg / High table for a metric over daylight and 24 hours.
-  const rangeTable = (key, format) => statsTable(["Low", "Avg", "High"], [["Daylight", dayHours], ["24 Hours", hours]].map(([label, period]) => {
-    const stats = periodStats(period, key);
-    return [label, stats ? [format(stats.min), format(stats.avg), format(stats.max)] : ["–", "–", "–"]];
-  }));
+  // Two sliders, daylight and 24 hours, on the same scale so they can be compared.
+  const rangeTable = (key, format) => {
+    const all = periodStats(hours, key);
+    const span = all.max - all.min || 1;
+    const position = v => (v - all.min) / span * 100;
+    const nowValue = current[`${key}Average`];
+    const container = element("div", "sliders");
+    [["Daylight", dayHours], ["24 Hours", hours]].forEach(([label, period]) => {
+      const stats = periodStats(period, key);
+      container.appendChild(element("span", "slider-label", label));
+      container.appendChild(element("span", "slider-end", stats ? format(stats.min) : "–"));
+      const track = element("div", "slider-track");
+      if (stats) {
+        const fill = element("div", "slider-fill");
+        fill.style.left = `${position(stats.min)}%`;
+        fill.style.width = `${position(stats.max) - position(stats.min)}%`;
+        track.appendChild(fill);
+        const average = element("div", "slider-average");
+        average.style.left = `${position(stats.avg)}%`;
+        average.title = `Avg ${format(stats.avg)}`;
+        track.appendChild(average);
+      }
+      if (nowValue !== null && nowValue !== undefined) {
+        const dot = element("div", "slider-now");
+        dot.style.left = `${Math.min(100, Math.max(0, position(nowValue)))}%`;
+        dot.title = `Now ${format(nowValue)}`;
+        track.appendChild(dot);
+      }
+      container.appendChild(track);
+      container.appendChild(element("span", "slider-end", stats ? format(stats.max) : "–"));
+    });
+    return container;
+  };
 
   // Temperature.
   const temperature = periodStats(hours, "temperature");
   if (temperature) {
     const degrees = formatter(0, "°");
-    container.appendChild(summaryTile("Temperature", "var(--temperature)", value("temperature", 0, "°"), "", rangeTable("temperature", degrees), `Warmest ${degrees(temperature.max)} at ${at(temperature.peakTime)}`));
+    container.appendChild(summaryTile("Temperature", "var(--temperature)", value("temperature", 0, "°"), "", rangeTable("temperature", degrees), [[`↑${degrees(temperature.max)}`, at(temperature.peakTime), "Warmest"], [`↓${degrees(temperature.min)}`, at(temperature.lowTime), "Coldest"]]));
   }
 
   // Feels like.
   const feelsLike = periodStats(hours, "feelsLike");
   if (feelsLike) {
     const degrees = formatter(0, "°");
-    const coldest = hours.reduce((best, h) => h.feelsLikeAverage !== null && (best === null || h.feelsLikeAverage < best.feelsLikeAverage) ? h : best, null);
-    container.appendChild(summaryTile("Feels Like", "var(--feels-like)", value("feelsLike", 0, "°"), "", rangeTable("feelsLike", degrees), coldest ? `Coldest ${degrees(coldest.feelsLikeAverage)} at ${at(new Date(coldest.time))}` : ""));
+    container.appendChild(summaryTile("Feels Like", "var(--feels-like)", value("feelsLike", 0, "°"), "", rangeTable("feelsLike", degrees), [[`↑${degrees(feelsLike.max)}`, at(feelsLike.peakTime), "Warmest"], [`↓${degrees(feelsLike.min)}`, at(feelsLike.lowTime), "Coldest"]]));
   }
 
   // Rain: total, wettest hour and highest chance.
@@ -533,7 +578,7 @@ function renderSummary(hourly, daylight) {
       const chance = periodStats(period, "precipitationProbability");
       return [label, [amount ? mm(amount.total) : "–", amount ? mm(amount.max) : "–", chance ? `${Math.round(chance.max)}%` : "–"]];
     }));
-    container.appendChild(summaryTile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, rain.max > 0 ? `Wettest ${mm(rain.max)} at ${at(rain.peakTime)}` : "No Rain Expected"));
+    container.appendChild(summaryTile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, [rain.max > 0 ? [`↑${mm(rain.max)}`, at(rain.peakTime), "Wettest Hour"] : ["Dry", "", "No Rain Expected"]]));
   }
 
   // UV.
@@ -541,13 +586,13 @@ function renderSummary(hourly, daylight) {
   const uvClearSky = periodStats(hours, "uvIndexClearSky");
   if (uv) {
     const index = formatter(1, "");
-    container.appendChild(summaryTile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), `Peak ${index(uv.max)} at ${at(uv.peakTime)}${uvClearSky ? ` (Clear Sky ${index(uvClearSky.max)})` : ""}`));
+    container.appendChild(summaryTile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), [[`↑${index(uv.max)}`, at(uv.peakTime), uvClearSky ? `Peak (Clear Sky ${index(uvClearSky.max)})` : "Peak"]]));
   }
 
   // Humidity.
   const humidity = periodStats(hours, "humidity");
   if (humidity) {
-    container.appendChild(summaryTile("Humidity", "var(--humidity)", value("humidity", 0, "%"), "", rangeTable("humidity", formatter(0, "%"))));
+    container.appendChild(summaryTile("Humidity", "var(--humidity)", value("humidity", 0, "%"), "", rangeTable("humidity", formatter(0, "%")), [[`↑${Math.round(humidity.max)}%`, at(humidity.peakTime), "Most Humid"]]));
   }
 
   // Wind.
@@ -556,7 +601,7 @@ function renderSummary(hourly, daylight) {
   if (wind) {
     const mph = formatter(0, " mph");
     const direction = current.windDirectionAverage === null || current.windDirectionAverage === undefined ? "" : ` from ${compass(current.windDirectionAverage)}`;
-    container.appendChild(summaryTile("Wind", "var(--wind)", value("windSpeed", 0, " mph"), `Gusts ${value("windGust", 0, " mph")}${direction}`, rangeTable("windSpeed", mph), gust ? `Strongest Gust ${mph(gust.max)} at ${at(gust.peakTime)}` : ""));
+    container.appendChild(summaryTile("Wind", "var(--wind)", value("windSpeed", 0, " mph"), `Gusts ${value("windGust", 0, " mph")}${direction}`, rangeTable("windSpeed", mph), [[`↑${mph(wind.max)}`, at(wind.peakTime), "Strongest Wind"], gust ? [`↑G ${mph(gust.max)}`, at(gust.peakTime), "Strongest Gust"] : null]));
   }
 }
 

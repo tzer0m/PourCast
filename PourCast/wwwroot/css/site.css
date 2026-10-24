@@ -105,10 +105,43 @@ body {
 
 .tile-main {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.tile-current {
+  display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.25rem 0.6rem;
-  margin-bottom: 0.5rem;
+}
+
+.tile-highlights {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  line-height: 1.25;
+}
+
+.tile-highlight {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.tile-highlight-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--key);
+}
+
+.tile-highlight-time {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .tile-headline {
@@ -120,6 +153,66 @@ body {
 .tile-secondary {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.sliders {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem 0.5rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider-label {
+  color: var(--muted);
+  padding-right: 0.25rem;
+}
+
+.slider-end {
+  font-weight: 600;
+  text-align: right;
+}
+
+.slider-end:last-child, .slider-track + .slider-end {
+  text-align: left;
+}
+
+.slider-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--grid);
+}
+
+.slider-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: var(--key);
+  opacity: 0.55;
+}
+
+.slider-average {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  opacity: 0.7;
+}
+
+.slider-now {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  background: var(--key);
+  border: 2px solid var(--surface);
 }
 
 .tile-table {
@@ -301,39 +394,10 @@ body {
 }
 
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem 1.75rem;
-  margin-bottom: 0.75rem;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
 
-.legend span::before {
-  content: "";
-  display: inline-block;
-  width: 14px;
-  margin-right: 0.5rem;
-  vertical-align: middle;
-  border-top: 2px solid var(--key);
-}
 
-.legend .key-dashed::before {
-  border-top-style: dashed;
-}
 
-.legend .key-dotted::before {
-  border-top-style: dotted;
-}
 
-.legend .key-block::before {
-  height: 8px;
-  border: none;
-  border-radius: 2px;
-  background: var(--key);
-}
 
 
 .humidity-line {
