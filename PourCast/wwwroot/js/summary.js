@@ -100,14 +100,14 @@ export function renderSummary(hours, daylight, range, zone) {
   const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
   const at = date => range.stepHours === 1 ? hourLabel(date) : range.stepHours >= 24 ? dayLabel(date, zone) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
 
-  // Two sliders, daylight and 24 hours, on the same scale so they can be compared.
-  const rangeTable = (key, format) => {
-    const all = periodStats(hours, key);
+  // Sliders, daylight and 24 hours by default, on the same scale so they can be compared.
+  const rangeTable = (key, format, periods = [["Daylight", dayHours], [periodLabel, hours]]) => {
+    const all = periodStats(periods.flatMap(([, period]) => period), key) ?? { min: 0, max: 0 };
     const span = all.max - all.min || 1;
     const position = v => (v - all.min) / span * 100;
     const nowValue = nowHour ? nowHour[`${key}Average`] : null;
     const container = element("div", "sliders");
-    [["Daylight", dayHours], [periodLabel, hours]].forEach(([label, period]) => {
+    periods.forEach(([label, period]) => {
       const stats = periodStats(period, key);
       container.appendChild(element("span", "slider-label", label));
       container.appendChild(element("span", "slider-end", stats ? format(stats.min) : "–"));
@@ -160,12 +160,14 @@ export function renderSummary(hours, daylight, range, zone) {
     container.appendChild(tile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, [rain.max > 0 ? [`↑${mm(rain.max)}`, at(rain.peakTime), "Wettest Hour"] : ["Dry", "", "No Rain Expected"]]));
   }
 
-  // UV.
+  // UV, daylight only, as it's zero all night and a 24 hour figure is dragged down by it.
   const uv = periodStats(hours, "uvIndex");
   const uvClearSky = periodStats(hours, "uvIndexClearSky");
   if (uv) {
     const index = formatter(1, "");
-    container.appendChild(tile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), [[`↑${index(uv.max)}`, at(uv.peakTime), uvClearSky ? `Peak (Clear Sky ${index(uvClearSky.max)})` : "Peak"]]));
+    const dayUv = periodStats(dayHours, "uvIndex");
+    const dayUvClearSky = periodStats(dayHours, "uvIndexClearSky");
+    container.appendChild(summaryTile("UV", "var(--uv)", dayUv ? index(dayUv.avg) : "–", `Daylight Avg · Clear Sky ${dayUvClearSky ? index(dayUvClearSky.avg) : "–"}`, rangeTable("uvIndex", index, [["Daylight", dayHours]]), [[`↑${index(uv.max)}`, at(uv.peakTime), uvClearSky ? `Peak (Clear Sky ${index(uvClearSky.max)})` : "Peak"]]));
   }
 
   // Humidity.
