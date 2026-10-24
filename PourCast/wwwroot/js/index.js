@@ -169,7 +169,7 @@ function renderStrip(hourly, daylight) {
   nights.forEach(([from, to]) => {
     const x1 = Math.max(0, timeX(from));
     const x2 = Math.min(width, timeX(to));
-    if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.height }));
+    if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.rainBottom }));
   });
   daylight.flatMap(d => [["sunrise", d.sunrise], ["sunset", d.sunset]]).filter(([, value]) => value).forEach(([kind, value]) => {
     const time = new Date(value);
