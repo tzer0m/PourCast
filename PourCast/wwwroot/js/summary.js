@@ -151,7 +151,7 @@ export function renderSummary(hours, daylight, range) {
   const rain = periodStats(hours, "precipitation");
   if (rain) {
     const mm = formatter(1, " mm");
-    const table = statsTable(["Total", "Wettest", "Chance"], [["Daylight", dayHours], [periodLabel, hours]].map(([label, period]) => {
+    const table = statsTable(["Total", "Peak", "Chance"], [["Daylight", dayHours], [periodLabel, hours]].map(([label, period]) => {
       const amount = periodStats(period, "precipitation");
       const chance = periodStats(period, "precipitationProbability");
       return [label, [amount ? mm(amount.total) : "–", amount ? mm(amount.max) : "–", chance ? `${Math.round(chance.max)}%` : "–"]];

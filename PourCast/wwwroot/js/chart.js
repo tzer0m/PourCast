@@ -30,14 +30,20 @@ const chartLayout = {
   minimumRainScale: 0.5
 };
 
-// Stretches the chart sections so the chart card matches the summary column's height on wide screens.
+// Stretches the chart sections to fill the dashboard row on wide screens. The row fills the window height,
+// or the summary column's height if that is taller.
 function fitLayout() {
   const base = chartLayout;
   if (window.matchMedia("(max-width: 900px)").matches) return base;
   stripElement.setAttribute("height", 0);
   axisElement.setAttribute("height", 0);
-  const chrome = document.getElementById("hourly").offsetHeight;
-  const extra = document.getElementById("summary").offsetHeight - chrome - base.height;
+  const card = document.getElementById("hourly");
+  const style = getComputedStyle(card);
+  const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+  const overhead = card.querySelector(".chart").offsetHeight;
+  // Rounded down with a pixel spare, so sub-pixel rounding can't push the page into scrolling.
+  const available = Math.floor(document.getElementById("dashboard").getBoundingClientRect().height - padding - overhead) - 1;
+  const extra = available - base.height;
   if (extra <= 0) return base;
   const sections = [["temperatureTop", "temperatureBottom"], ["rainTop", "rainBottom"], ["uvTop", "uvBottom"], ["humidityTop", "humidityBottom"], ["windTop", "windBottom"]];
   const total = sections.reduce((sum, [top, bottom]) => sum + base[bottom] - base[top], 0);
@@ -80,7 +86,8 @@ export function renderChart(hours, daylight, stepHours) {
   stripElement.setAttribute("width", 0);
   axisElement.setAttribute("width", layout.axisWidth);
   axisElement.setAttribute("height", layout.height);
-  const columnWidth = Math.max(layout.minimumColumnWidth, scroll.clientWidth / hours.length);
+  // Rounded down to a hundredth of a pixel so the total never exceeds the space and triggers a scrollbar.
+  const columnWidth = Math.max(layout.minimumColumnWidth, Math.floor(scroll.clientWidth / hours.length * 100) / 100);
   const width = hours.length * columnWidth;
   const centre = i => i * columnWidth + columnWidth / 2;
   const now = new Date();

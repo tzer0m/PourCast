@@ -241,10 +241,11 @@ body {
 }
 
 .dashboard {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(17rem, 20%) minmax(0, 1fr);
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .dashboard[hidden] {
@@ -253,22 +254,27 @@ body {
 
 @media (max-width: 900px) {
   .dashboard {
+    flex: none;
+    align-items: start;
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .summary {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
 }
 
-@media (max-width: 900px) {
-  .summary {
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  }
+.summary > .tile {
+  flex: 1 0 auto;
 }
 
+
 .tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   background: var(--surface);
   border-radius: 14px;
   box-shadow: var(--shadow);
@@ -335,6 +341,7 @@ body {
 }
 
 .tile-headline {
+  white-space: nowrap;
   font-size: 1.6rem;
   font-weight: 700;
   line-height: 1.1;
@@ -360,6 +367,7 @@ body {
 }
 
 .slider-end {
+  white-space: nowrap;
   font-weight: 600;
   text-align: right;
 }
@@ -413,7 +421,7 @@ body {
 }
 
 .tile-table th, .tile-table td {
-  padding: 0.2rem 0;
+  padding: 0.2rem 0 0.2rem 0.5rem;
   text-align: right;
   white-space: nowrap;
 }
@@ -425,6 +433,7 @@ body {
 }
 
 .tile-table tbody th {
+  padding-left: 0;
   color: var(--muted);
   font-weight: 500;
   text-align: left;
@@ -724,4 +733,46 @@ body {
   fill: var(--temperature);
 }
 
+/* Phone layout. Kept at the end so it overrides the base tile styles above. */
+@media (max-width: 900px) {
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
 
+  /* Tighter tiles so two fit side by side on a phone. */
+  .tile {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .tile-headline {
+    font-size: 1.3rem;
+  }
+
+  .tile-highlight-value {
+    font-size: 0.95rem;
+  }
+
+  /* Highlights move under the current value instead of squeezing beside it. */
+  .tile-main {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .tile-highlights {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.75rem;
+  }
+
+  /* Phones only get the essentials: title, current value and the high/low. */
+  .sliders, .tile-table, .tile-secondary {
+    display: none;
+  }
+
+  .tile-main {
+    margin-bottom: 0;
+  }
+}
