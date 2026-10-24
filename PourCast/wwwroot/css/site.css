@@ -589,7 +589,23 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* Scrolled by swiping, the wheel or the day chips, so the scrollbar is hidden. */
+  scrollbar-width: none;
+}
+
+.strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .strip-scroll {
+    cursor: grab;
+  }
+}
+
+.strip-scroll-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .strip {
@@ -633,8 +649,8 @@ body {
 }
 
 .day-divider {
-  stroke: var(--grid-strong);
-  stroke-dasharray: 4 4;
+  stroke: var(--divider);
+  stroke-width: 2;
 }
 
 .axis-label, .axis-unit {

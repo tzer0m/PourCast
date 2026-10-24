@@ -75,12 +75,24 @@ function fitLayout(base) {
   return scaled;
 }
 
-// Draws the chart for a set of columns, each stepHours long. Returns false if there are no columns.
-export function renderChart(hours, daylight, stepHours) {
+// Draws the chart for a set of columns, each stepHours long, sized so visibleColumns fill the width and the rest scroll.
+// Returns the column width and the index of the current column, or null if there are no columns.
+export function renderChart(hours, daylight, stepHours, visibleColumns = hours.length) {
   if (hours.length === 0) {
-    return false;
+    return null;
   }
   document.getElementById("dashboard").hidden = false;
+
+  // Stretch columns so visibleColumns fill the available width, scrolling only when they would get too narrow.
+  // Sized before the layout, so a scrollbar is already in place when the height is measured.
+  const scroll = document.getElementById("strip-scroll");
+  stripElement.setAttribute("width", 0);
+  axisElement.setAttribute("width", chartLayout.axisWidth);
+  // Rounded down to a hundredth of a pixel so the total never exceeds the space and triggers a scrollbar.
+  const columnWidth = Math.max(chartLayout.minimumColumnWidth, Math.floor(scroll.clientWidth / visibleColumns * 100) / 100);
+  const width = hours.length * columnWidth;
+  stripElement.setAttribute("width", width);
+
   const hasUv = hours.some(h => h.uvIndexAverage !== null || h.uvIndexClearSkyAverage !== null);
   const baseLayout = stepHours === 6 ? withDayRow(chartLayout) : chartLayout;
   const layout = fitLayout(hasUv ? baseLayout : withoutUv(baseLayout));
@@ -99,21 +111,12 @@ export function renderChart(hours, daylight, stepHours) {
   const rainScale = Math.max(layout.minimumRainScale, ...hours.map(h => h.precipitationMax ?? h.precipitationAverage ?? 0));
   const rainY = mm => layout.rainBottom - Math.min(mm, rainScale) / rainScale * (layout.rainBottom - layout.rainTop);
 
-  // Stretch columns to fill the available width, scrolling only when they would get too narrow.
-  const scroll = document.getElementById("strip-scroll");
-  document.getElementById("dashboard").hidden = false;
-  stripElement.setAttribute("width", 0);
-  axisElement.setAttribute("width", layout.axisWidth);
   axisElement.setAttribute("height", layout.height);
-  // Rounded down to a hundredth of a pixel so the total never exceeds the space and triggers a scrollbar.
-  const columnWidth = Math.max(layout.minimumColumnWidth, Math.floor(scroll.clientWidth / hours.length * 100) / 100);
-  const width = hours.length * columnWidth;
   const centre = i => i * columnWidth + columnWidth / 2;
   const now = new Date();
 
   stripElement.replaceChildren();
   axisElement.replaceChildren();
-  stripElement.setAttribute("width", width);
   stripElement.setAttribute("height", layout.height);
   stripElement.setAttribute("viewBox", `0 0 ${width} ${layout.height}`);
 
@@ -351,6 +354,5 @@ export function renderChart(hours, daylight, stepHours) {
     }
   });
 
-  scroll.scrollLeft = nowIndex >= 0 ? nowIndex * columnWidth : 0;
-  return true;
+  return { columnWidth, nowIndex };
 }

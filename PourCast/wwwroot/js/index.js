@@ -27,13 +27,101 @@ let selectedRange = new URL(window.location.href).searchParams.get("range") ?? "
 let closeRangeMenu = () => {};
 document.addEventListener("pointerdown", e => closeRangeMenu(e.target));
 
-function selectRange(key) {
-  selectedRange = key;
+// Keeps the selected range in the URL.
+function saveRange(key) {
   const url = new URL(window.location.href);
   if (key === "today") url.searchParams.delete("range"); else url.searchParams.set("range", key);
   history.replaceState(null, "", url);
+}
+
+function selectRange(key) {
+  const day = dayView?.ranges.find(r => r.key === key);
+  // Days share one continuous chart, so picking another day scrolls to it rather than redrawing.
+  if (day) {
+    showDay(day);
+    scrollChart(dayView.starts.get(key) * dayView.columnWidth, "smooth");
+    return;
+  }
+  selectedRange = key;
+  saveRange(key);
   render();
 }
+
+// The single day views are drawn as one continuous chart that scrolls sideways from day to day.
+// Holds the day ranges, the column each starts at and the column width, or null for the 7 and 30 day views.
+const scrollElement = document.getElementById("strip-scroll");
+let dayView = null;
+let chipElements = new Map();
+let menuLabel = null;
+let setMenuOpen = () => {};
+
+// Marks a day as selected and shows its summary, without redrawing the chart.
+function showDay(day) {
+  selectedRange = day.key;
+  saveRange(day.key);
+  setMenuOpen(false);
+  menuLabel.textContent = day.label;
+  chipElements.forEach(({ chip, option }, key) => {
+    chip.classList.toggle("range-chip-selected", key === day.key);
+    option.classList.toggle("range-menu-option-selected", key === day.key);
+    option.setAttribute("aria-selected", String(key === day.key));
+  });
+  renderSummary(hoursInRange(lastReport.hourly, day), lastReport.daylight, day);
+}
+
+// Scrolls the chart without the scroll changing the selected day. The day is followed again once scrolling stops.
+let followingScroll = true;
+let scrollIdleTimer = null;
+function scrollChart(left, behavior = "auto") {
+  followingScroll = false;
+  clearTimeout(scrollIdleTimer);
+  scrollIdleTimer = setTimeout(() => followingScroll = true, 150);
+  scrollElement.scrollTo({ left, behavior });
+}
+
+// Selects whichever day is in the middle of the chart as it's scrolled.
+let scrollFrame = null;
+scrollElement.addEventListener("scroll", () => {
+  if (!followingScroll) {
+    clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = setTimeout(() => followingScroll = true, 150);
+    return;
+  }
+  if (!dayView || scrollFrame) return;
+  scrollFrame = requestAnimationFrame(() => {
+    scrollFrame = null;
+    const column = Math.floor((scrollElement.scrollLeft + scrollElement.clientWidth / 2) / dayView.columnWidth);
+    const day = dayView.ranges.filter(r => dayView.starts.get(r.key) <= column).pop() ?? dayView.ranges[0];
+    if (day.key !== selectedRange) showDay(day);
+  });
+});
+
+// Mouse drag to scroll the chart, like swiping on a touch screen.
+let drag = null;
+scrollElement.addEventListener("pointerdown", e => {
+  if (e.pointerType !== "mouse" || e.button !== 0 || scrollElement.scrollWidth <= scrollElement.clientWidth) return;
+  drag = { x: e.clientX, left: scrollElement.scrollLeft };
+  scrollElement.setPointerCapture(e.pointerId);
+  scrollElement.classList.add("strip-scroll-dragging");
+});
+scrollElement.addEventListener("pointermove", e => {
+  if (drag) scrollElement.scrollLeft = drag.left - (e.clientX - drag.x);
+});
+const endDrag = () => {
+  drag = null;
+  scrollElement.classList.remove("strip-scroll-dragging");
+};
+scrollElement.addEventListener("pointerup", endDrag);
+scrollElement.addEventListener("pointercancel", endDrag);
+// Stops the browser dragging the condition icons as images instead.
+scrollElement.addEventListener("dragstart", e => e.preventDefault());
+
+// On wide screens the page doesn't scroll, so a mouse wheel over the day chart scrolls it sideways instead.
+scrollElement.addEventListener("wheel", e => {
+  if (!dayView || window.matchMedia("(max-width: 900px)").matches || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+  scrollElement.scrollLeft += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+  e.preventDefault();
+}, { passive: false });
 
 // Source list at the bottom: a tick if the source fed this view, a cross if it failed or isn't used for it.
 const sourcesElement = document.getElementById("sources");
@@ -93,6 +181,7 @@ function render() {
   selectedRange = range.key;
   // Chips for wide screens and a custom dropdown for phones; CSS shows whichever fits.
   rangesElement.replaceChildren();
+  chipElements = new Map();
   const menu = document.createElement("div");
   menu.className = "range-menu";
   const button = document.createElement("button");
@@ -100,20 +189,21 @@ function render() {
   button.className = "range-menu-button";
   button.setAttribute("aria-haspopup", "listbox");
   button.setAttribute("aria-expanded", "false");
-  button.appendChild(Object.assign(document.createElement("span"), { textContent: range.label }));
+  menuLabel = Object.assign(document.createElement("span"), { textContent: range.label });
+  button.appendChild(menuLabel);
   button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>');
   const list = document.createElement("ul");
   list.className = "range-menu-list";
   list.setAttribute("role", "listbox");
   list.hidden = true;
-  const setOpen = open => {
+  setMenuOpen = open => {
     list.hidden = !open;
     button.setAttribute("aria-expanded", String(open));
     menu.classList.toggle("range-menu-open", open);
   };
-  button.addEventListener("click", () => setOpen(list.hidden));
-  closeRangeMenu = target => { if (!menu.contains(target)) setOpen(false); };
-  menu.addEventListener("keydown", e => { if (e.key === "Escape") { setOpen(false); button.focus(); } });
+  button.addEventListener("click", () => setMenuOpen(list.hidden));
+  closeRangeMenu = target => { if (!menu.contains(target)) setMenuOpen(false); };
+  menu.addEventListener("keydown", e => { if (e.key === "Escape") { setMenuOpen(false); button.focus(); } });
   ranges.forEach(r => {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -131,10 +221,12 @@ function render() {
     option.addEventListener("click", () => selectRange(r.key));
     item.appendChild(option);
     list.appendChild(item);
+    chipElements.set(r.key, { chip, option });
   });
   menu.appendChild(button);
   menu.appendChild(list);
   rangesElement.appendChild(menu);
+  dayView = null;
   const report = range.source === "Month" ? monthReport : lastReport;
   if (!report) {
     statusElement.hidden = false;
@@ -145,12 +237,35 @@ function render() {
   // Hide any loading message before drawing, as the chart sizes itself to the space left on the page.
   statusElement.hidden = true;
   renderSources(report.sources);
-  const hours = hoursInRange(report.hourly, range);
-  renderSummary(hours, report.daylight, range);
-  if (!renderChart(columnsForRange(report, range), report.daylight, range.stepHours)) {
+  renderSummary(hoursInRange(report.hourly, range), report.daylight, range);
+  if (range.stepHours === 1) {
+    renderDays(report, ranges.filter(r => r.stepHours === 1), range);
+    return;
+  }
+  const chart = renderChart(columnsForRange(report, range), report.daylight, range.stepHours);
+  if (!chart) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
+    return;
   }
+  scrollChart(chart.nowIndex >= 0 ? chart.nowIndex * chart.columnWidth : 0);
+}
+
+// Draws every day as one chart, a day wide on screen, and scrolls to the selected day.
+function renderDays(report, days, range) {
+  const columns = hoursInRange(report.hourly, { start: days[0].start, end: days[days.length - 1].end });
+  const chart = renderChart(columns, report.daylight, 1, 24);
+  if (!chart) {
+    statusElement.hidden = false;
+    statusElement.textContent = "No forecast data available for this range.";
+    return;
+  }
+  const starts = new Map(days.map(d => [d.key, Math.max(0, columns.findIndex(c => new Date(c.time) >= d.start))]));
+  dayView = { ranges: days, starts, columnWidth: chart.columnWidth };
+  // On phones a day is wider than the screen, so today opens at the current hour rather than at 6am.
+  const dayFits = chart.columnWidth * 24 <= scrollElement.clientWidth + 1;
+  const column = range.key === "today" && !dayFits && chart.nowIndex >= 0 ? chart.nowIndex : starts.get(range.key);
+  scrollChart(column * chart.columnWidth);
 }
 
 // Current place, kept in the URL so it can be bookmarked.
