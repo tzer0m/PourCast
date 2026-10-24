@@ -11,7 +11,9 @@ using PourCast.Providers.PirateWeather;
 using PourCast.Providers.TomorrowIo;
 using PourCast.Providers.VisualCrossing;
 using PourCast.Providers.WeatherApi;
+using PourCast.Scoring;
 using PourCast.Scoring.Data;
+using PourCast.Scoring.Metar;
 using PourCast.Services;
 using PourCast.Services.Geocoding;
 using PourCast.Services.Usage;
@@ -56,6 +58,9 @@ builder.Services.AddHttpClient<GeocodingService>((IServiceProvider services, Htt
 
 // Register the scoring database, where forecasts and observations are recorded.
 builder.Services.AddDbContext<ScoringDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("PourCast")));
+builder.Services.Configure<ScoringOptions>(builder.Configuration.GetSection("Scoring"));
+builder.Services.AddHttpClient<MetarClient>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<ScoringOptions>>().Value.MetarBaseUrl));
+builder.Services.AddHostedService<ObservationService>();
 
 // Create the web application, bring the database up to date and configure.
 WebApplication app = builder.Build();
