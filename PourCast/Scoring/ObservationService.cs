@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PourCast.Scoring.Data;
 using PourCast.Scoring.Metar;
+using PourCast.Scoring.Metar.Models;
 using PourCast.Services;
 
 namespace PourCast.Scoring;

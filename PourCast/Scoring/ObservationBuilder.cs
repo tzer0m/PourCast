@@ -1,5 +1,5 @@
 using PourCast.Scoring.Data;
-using PourCast.Scoring.Metar;
+using PourCast.Scoring.Metar.Models;
 using PourCast.Services;
 using System.Text.Json;
 

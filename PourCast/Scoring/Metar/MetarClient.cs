@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using PourCast.Scoring.Metar.Models;
 using System.Globalization;
 using System.Net;
 

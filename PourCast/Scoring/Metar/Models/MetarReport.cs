@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace PourCast.Scoring.Metar;
+namespace PourCast.Scoring.Metar.Models;
 
 /// <summary>
 /// A single METAR report from the aviationweather.gov data API.
