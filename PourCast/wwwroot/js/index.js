@@ -131,7 +131,9 @@ function renderSources(sources) {
   sourcesElement.replaceChildren();
   // The title links to the accuracy scores.
   sourcesElement.appendChild(Object.assign(document.createElement("a"), { className: "sources-title", href: "/scores", textContent: "Sources", title: "Forecast Accuracy" }));
-  sources.forEach(source => {
+  // Busiest first by share of the daily limit; sources without a limit go last.
+  const usageShare = source => source.dailyLimit ? source.callsToday / source.dailyLimit : -1;
+  [...sources].sort((a, b) => usageShare(b) - usageShare(a) || a.source.localeCompare(b.source)).forEach(source => {
     const item = document.createElement("span");
     item.className = `source source-${source.status === "Used" ? "used" : source.status === "Failed" || source.status === "LimitReached" || source.status === "RateLimited" ? "failed" : "not-used"}`;
     item.appendChild(Object.assign(document.createElement("span"), { className: "source-icon", textContent: source.status === "Used" ? "✓" : "✗" }));
