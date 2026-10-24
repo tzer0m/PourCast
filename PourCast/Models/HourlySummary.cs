@@ -41,6 +41,16 @@ public class HourlySummary
     public double? FeelsLikeAverage { get; set; }
 
     /// <summary>
+    /// Lowest feels like temperature across sources in °C.
+    /// </summary>
+    public double? FeelsLikeMin { get; set; }
+
+    /// <summary>
+    /// Highest feels like temperature across sources in °C.
+    /// </summary>
+    public double? FeelsLikeMax { get; set; }
+
+    /// <summary>
     /// Average wind speed across sources in mph.
     /// </summary>
     public double? WindSpeedAverage { get; set; }
@@ -51,9 +61,29 @@ public class HourlySummary
     public double? HumidityAverage { get; set; }
 
     /// <summary>
+    /// Lowest relative humidity across sources in percent.
+    /// </summary>
+    public double? HumidityMin { get; set; }
+
+    /// <summary>
+    /// Highest relative humidity across sources in percent.
+    /// </summary>
+    public double? HumidityMax { get; set; }
+
+    /// <summary>
     /// Average UV index across sources.
     /// </summary>
     public double? UvIndexAverage { get; set; }
+
+    /// <summary>
+    /// Lowest UV index across sources.
+    /// </summary>
+    public double? UvIndexMin { get; set; }
+
+    /// <summary>
+    /// Highest UV index across sources.
+    /// </summary>
+    public double? UvIndexMax { get; set; }
 
     /// <summary>
     /// Average clear sky UV index across sources.
@@ -61,9 +91,29 @@ public class HourlySummary
     public double? UvIndexClearSkyAverage { get; set; }
 
     /// <summary>
+    /// Lowest clear sky UV index across sources.
+    /// </summary>
+    public double? UvIndexClearSkyMin { get; set; }
+
+    /// <summary>
+    /// Highest clear sky UV index across sources.
+    /// </summary>
+    public double? UvIndexClearSkyMax { get; set; }
+
+    /// <summary>
     /// Average precipitation across sources in mm.
     /// </summary>
     public double? PrecipitationAverage { get; set; }
+
+    /// <summary>
+    /// Lowest precipitation across sources in mm.
+    /// </summary>
+    public double? PrecipitationMin { get; set; }
+
+    /// <summary>
+    /// Highest precipitation across sources in mm.
+    /// </summary>
+    public double? PrecipitationMax { get; set; }
 
     /// <summary>
     /// Average chance of precipitation across sources in percent.

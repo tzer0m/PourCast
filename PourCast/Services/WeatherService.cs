@@ -65,16 +65,53 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
             Time = hour.Key,
             SourceCount = hour.Count(),
             Condition = hour.Where(x => x.Condition != WeatherCondition.Unknown).GroupBy(x => x.Condition).OrderByDescending(x => x.Count()).Select(x => x.Key).FirstOrDefault(),
-            TemperatureAverage = temperatures.Count > 0 ? temperatures.Average() : null,
-            TemperatureMin = temperatures.Count > 0 ? temperatures.Min() : null,
-            TemperatureMax = temperatures.Count > 0 ? temperatures.Max() : null,
-            FeelsLikeAverage = feelsLike.Count > 0 ? feelsLike.Average() : null,
-            UvIndexAverage = uvIndex.Count > 0 ? uvIndex.Average() : null,
-            UvIndexClearSkyAverage = uvIndexClearSky.Count > 0 ? uvIndexClearSky.Average() : null,
-            WindSpeedAverage = windSpeed.Count > 0 ? windSpeed.Average() : null,
-            HumidityAverage = humidity.Count > 0 ? humidity.Average() : null,
-            PrecipitationAverage = precipitation.Count > 0 ? precipitation.Average() : null,
-            PrecipitationProbabilityAverage = probabilities.Count > 0 ? probabilities.Average() : null
+            TemperatureAverage = Average(temperatures),
+            TemperatureMin = Min(temperatures),
+            TemperatureMax = Max(temperatures),
+            FeelsLikeAverage = Average(feelsLike),
+            FeelsLikeMin = Min(feelsLike),
+            FeelsLikeMax = Max(feelsLike),
+            UvIndexAverage = Average(uvIndex),
+            UvIndexMin = Min(uvIndex),
+            UvIndexMax = Max(uvIndex),
+            UvIndexClearSkyAverage = Average(uvIndexClearSky),
+            UvIndexClearSkyMin = Min(uvIndexClearSky),
+            UvIndexClearSkyMax = Max(uvIndexClearSky),
+            WindSpeedAverage = Average(windSpeed),
+            HumidityAverage = Average(humidity),
+            HumidityMin = Min(humidity),
+            HumidityMax = Max(humidity),
+            PrecipitationAverage = Average(precipitation),
+            PrecipitationMin = Min(precipitation),
+            PrecipitationMax = Max(precipitation),
+            PrecipitationProbabilityAverage = Average(probabilities)
         };
+    }
+
+    /// <summary>
+    /// Returns the average of the values, or null if there are none.
+    /// </summary>
+    /// <param name="values">The values.</param>
+    private static double? Average(List<double> values)
+    {
+        return values.Count > 0 ? values.Average() : null;
+    }
+
+    /// <summary>
+    /// Returns the lowest of the values, or null if there are none.
+    /// </summary>
+    /// <param name="values">The values.</param>
+    private static double? Min(List<double> values)
+    {
+        return values.Count > 0 ? values.Min() : null;
+    }
+
+    /// <summary>
+    /// Returns the highest of the values, or null if there are none.
+    /// </summary>
+    /// <param name="values">The values.</param>
+    private static double? Max(List<double> values)
+    {
+        return values.Count > 0 ? values.Max() : null;
     }
 }

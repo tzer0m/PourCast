@@ -266,6 +266,34 @@ body {
   fill: var(--humidity);
 }
 
+.range-band {
+  stroke: none;
+  opacity: 0.15;
+}
+
+.range-feels-like {
+  fill: var(--feels-like);
+}
+
+.range-uv {
+  fill: var(--uv);
+}
+
+.range-uv-clear-sky {
+  opacity: 0.08;
+}
+
+.range-humidity {
+  fill: var(--humidity);
+}
+
+.rain-range {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  opacity: 0.55;
+}
+
 .temperature-point {
   fill: var(--surface);
   stroke: var(--temperature);

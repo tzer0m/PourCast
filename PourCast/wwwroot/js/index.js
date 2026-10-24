@@ -134,7 +134,7 @@ function renderStrip(hourly, daylight) {
   }
 
   // Temperature scale snapped to tidy steps.
-  const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeAverage]).filter(t => t !== null);
+  const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
   const rawLow = Math.min(...temperatures);
   const rawHigh = Math.max(...temperatures);
   const step = temperatureStep(rawHigh - rawLow);
@@ -143,7 +143,7 @@ function renderStrip(hourly, daylight) {
   const temperatureY = t => layout.temperatureTop + (high - t) / (high - low) * (layout.temperatureBottom - layout.temperatureTop);
 
   // Rain scale.
-  const rainScale = Math.max(layout.minimumRainScale, Math.ceil(Math.max(...hours.map(h => h.precipitationAverage ?? 0))));
+  const rainScale = Math.max(layout.minimumRainScale, Math.ceil(Math.max(...hours.map(h => h.precipitationMax ?? h.precipitationAverage ?? 0))));
   const rainY = mm => layout.rainBottom - Math.min(mm, rainScale) / rainScale * (layout.rainBottom - layout.rainTop);
 
   // Stretch columns to fill the available width, scrolling only when they would get too narrow.
@@ -203,7 +203,7 @@ function renderStrip(hourly, daylight) {
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 14 }, "mm"));
 
   // UV index section between temperature and rain.
-  const uvValues = hours.flatMap(h => [h.uvIndexAverage, h.uvIndexClearSkyAverage]).filter(u => u !== null);
+  const uvValues = hours.flatMap(h => [h.uvIndexMax, h.uvIndexClearSkyMax]).filter(u => u !== null);
   const uvScale = Math.ceil(Math.max(layout.minimumUvScale, ...uvValues) / 2) * 2;
   const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
   [0, uvScale / 2, uvScale].forEach(uv => {
@@ -251,8 +251,14 @@ function renderStrip(hourly, daylight) {
       bar.style.setProperty("--chance", 0.2 + 0.8 * chance);
       bar.appendChild(svg("title", {}, `${rain.toFixed(2)} mm · ${Math.round(chance * 100)}% Chance`));
       stripElement.appendChild(bar);
+      if (h.precipitationMin !== null && h.precipitationMax !== null && h.precipitationMax > h.precipitationMin) {
+        const x = centre(i);
+        const top = rainY(h.precipitationMax);
+        const bottom = rainY(h.precipitationMin);
+        stripElement.appendChild(svg("path", { class: "rain-range", d: `M ${x} ${top} V ${bottom} M ${x - 4} ${top} H ${x + 4} M ${x - 4} ${bottom} H ${x + 4}` }));
+      }
       const amount = rain < 0.1 ? "<0.1" : rain.toFixed(1);
-      stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, h.precipitationProbabilityAverage === null ? amount : `${amount} - ${Math.round(h.precipitationProbabilityAverage)}%`));
+      stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: Math.min(y, h.precipitationMax === null ? y : rainY(h.precipitationMax)) - 5 }, h.precipitationProbabilityAverage === null ? amount : `${amount} - ${Math.round(h.precipitationProbabilityAverage)}%`));
     }
   });
 
@@ -261,6 +267,19 @@ function renderStrip(hourly, daylight) {
   const minPoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureMin)]).reverse();
   const averagePoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureAverage)]);
   stripElement.appendChild(svg("path", { class: "temperature-range", d: `${smoothPath(maxPoints)} ${smoothPath(minPoints, false)} Z` }));
+
+  // Min/max bands for the other lines.
+  const band = (className, minKey, maxKey, toY) => {
+    const valid = hours.map((h, i) => [i, h[minKey], h[maxKey]]).filter(([, min, max]) => min !== null && max !== null);
+    if (valid.length < 2) return;
+    const upper = valid.map(([i, , max]) => [centre(i), toY(max)]);
+    const lower = valid.map(([i, min]) => [centre(i), toY(min)]).reverse();
+    stripElement.appendChild(svg("path", { class: `range-band ${className}`, d: `${smoothPath(upper)} ${smoothPath(lower, false)} Z` }));
+  };
+  band("range-feels-like", "feelsLikeMin", "feelsLikeMax", temperatureY);
+  band("range-uv", "uvIndexMin", "uvIndexMax", uvY);
+  band("range-uv range-uv-clear-sky", "uvIndexClearSkyMin", "uvIndexClearSkyMax", uvY);
+  band("range-humidity", "humidityMin", "humidityMax", humidityY);
   const feelsLikePoints = hours.map((h, i) => [centre(i), h.feelsLikeAverage]).filter(([, t]) => t !== null).map(([x, t]) => [x, temperatureY(t)]);
   const uvPoints = hours.map((h, i) => [centre(i), h.uvIndexAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
   const uvClearSkyPoints = hours.map((h, i) => [centre(i), h.uvIndexClearSkyAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
