@@ -39,7 +39,7 @@ function selectRange(key) {
   // Days share one continuous chart, so picking another day scrolls to it rather than redrawing.
   if (day) {
     showDay(day);
-    scrollChart(dayView.starts.get(key) * dayView.columnWidth, "smooth");
+    scrollChart(dayColumn(key) * dayView.columnWidth, "smooth");
     return;
   }
   selectedRange = key;
@@ -261,11 +261,13 @@ function renderDays(report, days, range) {
     return;
   }
   const starts = new Map(days.map(d => [d.key, Math.max(0, columns.findIndex(c => new Date(c.time) >= d.start))]));
-  dayView = { ranges: days, starts, columnWidth: chart.columnWidth };
-  // On phones a day is wider than the screen, so today opens at the current hour rather than at 6am.
-  const dayFits = chart.columnWidth * 24 <= scrollElement.clientWidth + 1;
-  const column = range.key === "today" && !dayFits && chart.nowIndex >= 0 ? chart.nowIndex : starts.get(range.key);
-  scrollChart(column * chart.columnWidth);
+  dayView = { ranges: days, starts, columnWidth: chart.columnWidth, nowIndex: chart.nowIndex };
+  scrollChart(dayColumn(range.key) * chart.columnWidth);
+}
+
+// The column a day opens at: the current hour for today, otherwise the day's 6am start.
+function dayColumn(key) {
+  return key === "today" && dayView.nowIndex >= 0 ? dayView.nowIndex : dayView.starts.get(key);
 }
 
 // Current place, kept in the URL so it can be bookmarked.
