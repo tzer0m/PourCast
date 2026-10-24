@@ -1,6 +1,5 @@
 const statusElement = document.getElementById("status");
 const axisElement = document.getElementById("axis");
-const uvAxisElement = document.getElementById("axis-uv");
 const stripElement = document.getElementById("strip");
 const svgNamespace = "http://www.w3.org/2000/svg";
 
@@ -8,9 +7,8 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 const layout = {
   minimumColumnWidth: 56,
   axisWidth: 44,
-  uvAxisWidth: 36,
   minimumUvScale: 4,
-  height: 412,
+  height: 514,
   timeY: 22,
   iconY: 30,
   iconSize: 36,
@@ -19,8 +17,10 @@ const layout = {
   sunY: 132,
   temperatureTop: 150,
   temperatureBottom: 280,
-  rainTop: 314,
-  rainBottom: 388,
+  uvTop: 314,
+  uvBottom: 382,
+  rainTop: 416,
+  rainBottom: 490,
   minimumRainScale: 2
 };
 
@@ -149,8 +149,6 @@ function renderStrip(hourly, daylight) {
   stripElement.setAttribute("width", 0);
   axisElement.setAttribute("width", layout.axisWidth);
   axisElement.setAttribute("height", layout.height);
-  uvAxisElement.setAttribute("width", layout.uvAxisWidth);
-  uvAxisElement.setAttribute("height", layout.height);
   const columnWidth = Math.max(layout.minimumColumnWidth, scroll.clientWidth / hours.length);
   const width = hours.length * columnWidth;
   const centre = i => i * columnWidth + columnWidth / 2;
@@ -159,7 +157,6 @@ function renderStrip(hourly, daylight) {
 
   stripElement.replaceChildren();
   axisElement.replaceChildren();
-  uvAxisElement.replaceChildren();
   stripElement.setAttribute("width", width);
   stripElement.setAttribute("height", layout.height);
   stripElement.setAttribute("viewBox", `0 0 ${width} ${layout.height}`);
@@ -202,14 +199,15 @@ function renderStrip(hourly, daylight) {
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.temperatureTop - 14 }, "°C"));
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.rainTop - 14 }, "mm"));
 
-  // UV index scale on the right, sharing the temperature area.
+  // UV index section between temperature and rain.
   const uvValues = hours.flatMap(h => [h.uvIndexAverage, h.uvIndexClearSkyAverage]).filter(u => u !== null);
   const uvScale = Math.ceil(Math.max(layout.minimumUvScale, ...uvValues) / 2) * 2;
-  const uvY = uv => layout.temperatureBottom - uv / uvScale * (layout.temperatureBottom - layout.temperatureTop);
-  if (uvValues.length > 0) {
-    [0, uvScale / 2, uvScale].forEach(uv => uvAxisElement.appendChild(svg("text", { class: "axis-label axis-uv", x: 8, y: uvY(uv) + 4 }, `${uv}`)));
-    uvAxisElement.appendChild(svg("text", { class: "axis-unit axis-uv-unit", x: 8, y: layout.temperatureTop - 14 }, "UV"));
-  }
+  const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
+  [0, uvScale / 2, uvScale].forEach(uv => {
+    stripElement.appendChild(svg("line", { class: uv === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: uvY(uv), y2: uvY(uv) }));
+    axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 8, y: uvY(uv) + 4 }, `${uv}`));
+  });
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.uvTop - 14 }, "UV"));
 
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {

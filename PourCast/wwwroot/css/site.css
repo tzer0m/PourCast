@@ -186,9 +186,6 @@ body {
   opacity: 0.6;
 }
 
-.axis-uv, .axis-uv-unit {
-  text-anchor: start;
-}
 
 .legend {
   display: flex;
