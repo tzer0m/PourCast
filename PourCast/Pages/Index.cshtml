@@ -3,4 +3,40 @@
 @{
     ViewData["Title"] = "Home";
 }
-<h1>PourCast</h1>
+<p id="status">Finding Your Location…</p>
+<section id="current" hidden>
+    <h2>Now</h2>
+    <p class="now-temp"><span id="current-temp"></span> <span id="current-condition"></span></p>
+    <dl class="now-details">
+        <dt>Feels Like</dt><dd id="current-feels"></dd>
+        <dt>Wind</dt><dd id="current-wind"></dd>
+        <dt>Humidity</dt><dd id="current-humidity"></dd>
+        <dt>Pressure</dt><dd id="current-pressure"></dd>
+    </dl>
+    <p class="source">Source: <span id="current-source"></span></p>
+</section>
+<section id="hourly" hidden>
+    <h2>Next 24 Hours</h2>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr><th>Time</th><th>Condition</th><th>Temp</th><th>Feels Like</th><th>Rain Chance</th><th>Rain</th><th>Wind</th><th>Gusts</th></tr>
+            </thead>
+            <tbody id="hourly-body"></tbody>
+        </table>
+    </div>
+</section>
+<section id="daily" hidden>
+    <h2>Next 7 Days</h2>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr><th>Day</th><th>Condition</th><th>High</th><th>Low</th><th>Rain Chance</th><th>Rain</th><th>Wind</th><th>Gusts</th><th>Sunrise</th><th>Sunset</th></tr>
+            </thead>
+            <tbody id="daily-body"></tbody>
+        </table>
+    </div>
+</section>
+@section Scripts {
+    <script src="~/js/index.js" asp-append-version="true"></script>
+}
