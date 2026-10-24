@@ -35,16 +35,27 @@ export function hoursInRange(hourly, range) {
   });
 }
 
-// Groups hours into columns of the range's step, combining each metric sensibly.
+// Column boundaries on the local clock (6am, 12pm, 6pm, 12am), so they stay put across a clock change.
+function boundaries(range) {
+  const result = [];
+  for (let date = new Date(range.start); date < range.end; date = new Date(date)) {
+    result.push(new Date(date));
+    date.setHours(date.getHours() + range.stepHours);
+  }
+  result.push(new Date(range.end));
+  return result;
+}
+
+// Groups hours into columns of the range's step, combining each metric sensibly. Every column gets an end time.
 export function columnsForRange(hours, range) {
-  if (range.stepHours === 1) return hours;
-  const groups = new Map();
-  hours.forEach(h => {
-    const index = Math.floor((new Date(h.time) - range.start) / (range.stepHours * hourMs));
-    if (!groups.has(index)) groups.set(index, []);
-    groups.get(index).push(h);
-  });
-  return [...groups.entries()].sort(([a], [b]) => a - b).map(([index, group]) => combine(group, new Date(range.start.getTime() + index * range.stepHours * hourMs)));
+  if (range.stepHours === 1) return hours.map(h => ({ ...h, end: new Date(new Date(h.time).getTime() + hourMs).toISOString() }));
+  const edges = boundaries(range);
+  const columns = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    const group = hours.filter(h => new Date(h.time) >= edges[i] && new Date(h.time) < edges[i + 1]);
+    if (group.length > 0) columns.push({ ...combine(group, edges[i]), end: edges[i + 1].toISOString() });
+  }
+  return columns;
 }
 
 function values(group, key) {
