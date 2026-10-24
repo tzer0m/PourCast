@@ -30,7 +30,13 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     {
         ProviderResult[] results = await GatherAsync(latitude, longitude, range, cancellationToken);
         List<Forecast> forecasts = results.Where(x => x.Forecast is not null).Select(x => x.Forecast!).ToList();
-        List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts), combiningOptions.Value);
+        // Outliers are counted from the hourly combine only, so each excluded value is counted once.
+        Dictionary<string, Dictionary<string, int>> exclusions = [];
+        List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts), combiningOptions.Value, exclusions);
+        foreach (ProviderResult result in results)
+        {
+            result.Exclusions = exclusions.GetValueOrDefault(result.Source) ?? [];
+        }
         List<HourlySummary> columns = ForecastCombiner.Combine(forecasts, ColumnBuilder.ForRange(range, timeZone, DateTimeOffset.UtcNow), combiningOptions.Value);
         List<Daylight> daylight = SunCalculator.Calculate(latitude, longitude, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), range == ForecastRange.Month ? 38 : 10);
         string? locationName = results.Select(x => x.Forecast?.LocationName).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));

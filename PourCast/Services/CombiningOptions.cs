@@ -54,4 +54,19 @@ public class CombiningOptions
     /// The temperature in °C at or above which the heat index applies in full.
     /// </summary>
     public double HeatIndexFullAt { get; set; } = 27;
+
+    /// <summary>
+    /// The number of sources with a value needed before outliers are looked for.
+    /// </summary>
+    public int OutlierMinimumSources { get; set; } = 5;
+
+    /// <summary>
+    /// How many robust spreads (MAD) from the median a value can be before it counts as an outlier.
+    /// </summary>
+    public double OutlierMultiplier { get; set; } = 3;
+
+    /// <summary>
+    /// Per metric, the distance from the median within which a value is never an outlier, so close agreement doesn't make tiny differences count.
+    /// </summary>
+    public Dictionary<string, double> OutlierMinimumDistances { get; set; } = [];
 }

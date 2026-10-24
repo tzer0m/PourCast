@@ -39,6 +39,11 @@ public class ProviderResult
     public int? DailyLimit { get; set; }
 
     /// <summary>
+    /// How many of the source's hourly values were excluded as outliers, by metric.
+    /// </summary>
+    public Dictionary<string, int> Exclusions { get; set; } = [];
+
+    /// <summary>
     /// The error message, if the request failed.
     /// </summary>
     public string? Error { get; set; }

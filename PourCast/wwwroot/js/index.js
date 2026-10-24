@@ -55,7 +55,12 @@ function renderSources(sources) {
     }
     const ranges = source.ranges.map(r => rangeNames[r] ?? r).join(", ");
     const state = source.status === "Used" ? `Used for this view (${ranges})` : source.status === "Failed" ? `Failed: ${source.error}` : source.status === "LimitReached" ? "Daily limit reached" : source.status === "RateLimited" ? source.error : `Not used for this view (only ${ranges})`;
-    item.title = `${state}\n${usage}`;
+    // Values dropped as outliers, e.g. "Excluded 14 values: Humidity 10, Rain 4".
+    const metricNames = { Temperature: "Temp", FeelsLike: "Feels Like", Humidity: "Humidity", WindSpeed: "Wind", WindGust: "Gusts", Precipitation: "Rain", PrecipitationProbability: "Rain Chance", UvIndex: "UV", UvIndexClearSky: "Clear Sky UV" };
+    const excluded = Object.entries(source.exclusions ?? {}).sort((a, b) => b[1] - a[1]);
+    const total = excluded.reduce((sum, [, count]) => sum + count, 0);
+    const exclusionText = total > 0 ? `\nExcluded ${total} values: ${excluded.map(([metric, count]) => `${metricNames[metric] ?? metric} ${count}`).join(", ")}` : "";
+    item.title = `${state}\n${usage}${exclusionText}`;
     sourcesElement.appendChild(item);
   });
   sourcesElement.hidden = false;

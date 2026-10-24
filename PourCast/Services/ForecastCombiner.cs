@@ -12,22 +12,23 @@ public static class ForecastCombiner
     /// </summary>
     /// <param name="forecasts">The forecasts to combine.</param>
     /// <param name="windows">The column windows, in time order.</param>
-    /// <param name="options">How the band is trimmed.</param>
-    public static List<HourlySummary> Combine(List<Forecast> forecasts, List<ColumnWindow> windows, CombiningOptions options)
+    /// <param name="options">How the band is trimmed and outliers found.</param>
+    /// <param name="exclusions">If given, collects how many values each source had excluded as outliers, by metric.</param>
+    public static List<HourlySummary> Combine(List<Forecast> forecasts, List<ColumnWindow> windows, CombiningOptions options, Dictionary<string, Dictionary<string, int>>? exclusions = null)
     {
         // Ensembles always use their percentiles; normal sources use percentiles once there are enough of them, otherwise min to max.
         bool ensemble = forecasts.Any(x => x.IsEnsemble);
         List<DateTimeOffset> starts = windows.Select(x => x.Start).ToList();
 
         // Each series is one source, or one member of an ensemble, with its hours bucketed by column.
-        List<Dictionary<int, List<HourlyForecast>>> series = forecasts.SelectMany(x => x.Hourly.GroupBy(h => h.Member ?? string.Empty)).Select(x => Bucket(options.CalculateFeelsLike ? x.Select(h => WithCalculatedFeelsLike(h, options)) : x, windows, starts)).ToList();
+        List<(string Source, Dictionary<int, List<HourlyForecast>> Buckets)> series = forecasts.SelectMany(f => f.Hourly.GroupBy(h => h.Member ?? string.Empty).Select(x => (f.Source, Bucket(options.CalculateFeelsLike ? x.Select(h => WithCalculatedFeelsLike(h, options)) : x, windows, starts)))).ToList();
         List<HourlySummary> result = [];
         for (int i = 0; i < windows.Count; i++)
         {
-            List<HourlyForecast> values = series.Where(x => x.ContainsKey(i)).Select(x => Aggregate(x[i])).ToList();
+            List<(string Source, HourlyForecast Value)> values = series.Where(x => x.Buckets.ContainsKey(i)).Select(x => (x.Source, Aggregate(x.Buckets[i]))).ToList();
             if (values.Count > 0)
             {
-                result.Add(Summarise(values, windows[i], ensemble, options));
+                result.Add(Summarise(values, windows[i], ensemble, options, exclusions));
             }
         }
         return result;
@@ -106,27 +107,28 @@ public static class ForecastCombiner
     /// <summary>
     /// Compares the series' values for a column, giving the average and the spread for each metric.
     /// </summary>
-    /// <param name="values">One summarised value per series.</param>
+    /// <param name="values">One summarised value per series, with the source it came from.</param>
     /// <param name="window">The column window.</param>
     /// <param name="ensemble">Whether the values are ensemble members.</param>
-    /// <param name="options">How the band is trimmed.</param>
-    private static HourlySummary Summarise(List<HourlyForecast> values, ColumnWindow window, bool ensemble, CombiningOptions options)
+    /// <param name="options">How the band is trimmed and outliers found.</param>
+    /// <param name="exclusions">If given, collects how many values each source had excluded as outliers, by metric.</param>
+    private static HourlySummary Summarise(List<(string Source, HourlyForecast Value)> values, ColumnWindow window, bool ensemble, CombiningOptions options, Dictionary<string, Dictionary<string, int>>? exclusions)
     {
-        (double? Average, double? Low, double? High) temperature = Spread(values.Select(x => x.Temperature), ensemble, options);
-        (double? Average, double? Low, double? High) feelsLike = Spread(values.Select(x => x.FeelsLike), ensemble, options);
-        (double? Average, double? Low, double? High) humidity = Spread(values.Select(x => x.Humidity), ensemble, options);
-        (double? Average, double? Low, double? High) windSpeed = Spread(values.Select(x => x.WindSpeed), ensemble, options);
-        (double? Average, double? Low, double? High) windGust = Spread(values.Select(x => x.WindGust), ensemble, options);
-        (double? Average, double? Low, double? High) uvIndex = Spread(values.Select(x => x.UvIndex), ensemble, options);
-        (double? Average, double? Low, double? High) uvIndexClearSky = Spread(values.Select(x => x.UvIndexClearSky), ensemble, options);
-        (double? Average, double? Low, double? High) precipitation = Spread(values.Select(x => x.Precipitation), ensemble, options);
-        (double? Average, double? Low, double? High) probability = Spread(values.Select(x => x.PrecipitationProbability), ensemble, options);
+        (double? Average, double? Low, double? High) temperature = Spread(WithoutOutliers(values, x => x.Temperature, "Temperature", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) feelsLike = Spread(WithoutOutliers(values, x => x.FeelsLike, "FeelsLike", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) humidity = Spread(WithoutOutliers(values, x => x.Humidity, "Humidity", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) windSpeed = Spread(WithoutOutliers(values, x => x.WindSpeed, "WindSpeed", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) windGust = Spread(WithoutOutliers(values, x => x.WindGust, "WindGust", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) uvIndex = Spread(WithoutOutliers(values, x => x.UvIndex, "UvIndex", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) uvIndexClearSky = Spread(WithoutOutliers(values, x => x.UvIndexClearSky, "UvIndexClearSky", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) precipitation = Spread(WithoutOutliers(values, x => x.Precipitation, "Precipitation", ensemble, options, exclusions), ensemble, options);
+        (double? Average, double? Low, double? High) probability = Spread(WithoutOutliers(values, x => x.PrecipitationProbability, "PrecipitationProbability", ensemble, options, exclusions), ensemble, options);
         return new HourlySummary
         {
             Time = window.Start,
             End = window.End,
             SourceCount = values.Count,
-            Condition = Mode(values.Select(x => x.Condition)),
+            Condition = Mode(values.Select(x => x.Value.Condition)),
             TemperatureAverage = temperature.Average,
             TemperatureMin = temperature.Low,
             TemperatureMax = temperature.High,
@@ -142,7 +144,7 @@ public static class ForecastCombiner
             WindGustAverage = windGust.Average,
             WindGustMin = windGust.Low,
             WindGustMax = windGust.High,
-            WindDirectionAverage = Direction(values.Select(x => x.WindDirection)),
+            WindDirectionAverage = Direction(values.Select(x => x.Value.WindDirection)),
             UvIndexAverage = uvIndex.Average,
             UvIndexMin = uvIndex.Low,
             UvIndexMax = uvIndex.High,
@@ -156,6 +158,59 @@ public static class ForecastCombiner
             PrecipitationProbabilityMin = ensemble ? null : probability.Low,
             PrecipitationProbabilityMax = ensemble ? null : probability.High
         };
+    }
+
+    /// <summary>
+    /// Drops values that are far from the other sources: further from the median than the metric's minimum distance
+    /// or the multiplier times the robust spread (MAD), whichever is larger. Only applied with enough sources, and never to ensembles.
+    /// </summary>
+    /// <param name="values">One summarised value per series, with its source.</param>
+    /// <param name="selector">Picks the metric from a value.</param>
+    /// <param name="metric">The metric name, used for its minimum distance and for reporting.</param>
+    /// <param name="ensemble">Whether the values are ensemble members.</param>
+    /// <param name="options">The outlier settings.</param>
+    /// <param name="exclusions">If given, collects how many values each source had excluded, by metric.</param>
+    private static IEnumerable<double?> WithoutOutliers(List<(string Source, HourlyForecast Value)> values, Func<HourlyForecast, double?> selector, string metric, bool ensemble, CombiningOptions options, Dictionary<string, Dictionary<string, int>>? exclusions)
+    {
+        List<(string Source, double Value)> list = values.Select(x => (x.Source, Value: selector(x.Value))).Where(x => x.Value is not null).Select(x => (x.Source, x.Value!.Value)).ToList();
+        if (ensemble || list.Count < options.OutlierMinimumSources)
+        {
+            return list.Select(x => (double?)x.Value);
+        }
+        double median = Median(list.Select(x => x.Value));
+        double deviation = Median(list.Select(x => Math.Abs(x.Value - median)));
+
+        // 1.4826 scales the MAD to match a standard deviation for normally distributed values.
+        double limit = Math.Max(options.OutlierMinimumDistances.GetValueOrDefault(metric), options.OutlierMultiplier * 1.4826 * deviation);
+        List<double?> kept = [];
+        foreach ((string source, double value) in list)
+        {
+            if (Math.Abs(value - median) <= limit)
+            {
+                kept.Add(value);
+            }
+            else if (exclusions is not null)
+            {
+                if (!exclusions.TryGetValue(source, out Dictionary<string, int>? counts))
+                {
+                    counts = [];
+                    exclusions[source] = counts;
+                }
+                counts[metric] = counts.GetValueOrDefault(metric) + 1;
+            }
+        }
+        return kept;
+    }
+
+    /// <summary>
+    /// Returns the median of the values.
+    /// </summary>
+    /// <param name="values">The values; there must be at least one.</param>
+    private static double Median(IEnumerable<double> values)
+    {
+        List<double> sorted = values.Order().ToList();
+        int middle = sorted.Count / 2;
+        return sorted.Count % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
     }
 
     /// <summary>
