@@ -10,7 +10,8 @@ const layout = {
   height: 360,
   timeY: 24,
   temperatureLabelY: 58,
-  temperatureTop: 92,
+  sunY: 80,
+  temperatureTop: 98,
   temperatureBottom: 228,
   rainTop: 262,
   rainBottom: 336,
@@ -61,7 +62,24 @@ function smoothPath(points, move = true) {
   return path;
 }
 
-function renderStrip(hourly) {
+function clockTime(date) {
+  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Night periods between each sunset and the following sunrise.
+function nightPeriods(daylight) {
+  const periods = [];
+  daylight.forEach((d, i) => {
+    if (d.sunrise === null && !d.alwaysUp) periods.push([new Date(`${d.date}T00:00:00Z`), new Date(`${d.date}T23:59:59Z`)]);
+    const next = daylight[i + 1];
+    if (d.sunset && next?.sunrise) periods.push([new Date(d.sunset), new Date(next.sunrise)]);
+  });
+  const first = daylight[0];
+  if (first?.sunrise) periods.unshift([new Date(new Date(first.sunrise).getTime() - 24 * 60 * 60 * 1000), new Date(first.sunrise)]);
+  return periods;
+}
+
+function renderStrip(hourly, daylight) {
   const hours = windowHours(hourly);
   if (hours.length === 0) {
     statusElement.textContent = "No hourly data available for today.";
@@ -99,6 +117,24 @@ function renderStrip(hourly) {
   stripElement.setAttribute("width", width);
   stripElement.setAttribute("height", layout.height);
   stripElement.setAttribute("viewBox", `0 0 ${width} ${layout.height}`);
+
+  // Night shading and sunrise/sunset markers.
+  const start = new Date(hours[0].time).getTime();
+  const timeX = date => (date.getTime() - start) / (60 * 60 * 1000) * columnWidth;
+  nightPeriods(daylight).forEach(([from, to]) => {
+    const x1 = Math.max(0, timeX(from));
+    const x2 = Math.min(width, timeX(to));
+    if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.height }));
+  });
+  daylight.flatMap(d => [["sunrise", d.sunrise], ["sunset", d.sunset]]).filter(([, value]) => value).forEach(([kind, value]) => {
+    const time = new Date(value);
+    const x = timeX(time);
+    if (x < 0 || x > width) return;
+    stripElement.appendChild(svg("line", { class: "sun-line", x1: x, x2: x, y1: layout.sunY + 6, y2: layout.rainBottom }));
+    const label = svg("text", { class: "sun-label", x: x + 4, y: layout.sunY }, `${kind === "sunrise" ? "↑" : "↓"} ${clockTime(time)}`);
+    label.appendChild(svg("title", {}, `${kind === "sunrise" ? "Sunrise" : "Sunset"} ${clockTime(time)}`));
+    stripElement.appendChild(label);
+  });
 
   // Current hour highlight.
   const nowIndex = hours.findIndex(h => new Date(h.time).getTime() === now.getTime());
@@ -157,11 +193,11 @@ function renderStrip(hourly) {
   }
 }
 
-let lastHourly = null;
+let lastReport = null;
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (lastHourly) renderStrip(lastHourly); }, 150);
+  resizeTimer = setTimeout(() => { if (lastReport) renderStrip(lastReport.hourly, lastReport.daylight); }, 150);
 });
 
 function renderSources(sources) {
@@ -175,8 +211,8 @@ async function load(latitude, longitude) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     statusElement.hidden = true;
-    lastHourly = report.hourly;
-    renderStrip(report.hourly);
+    lastReport = report;
+    renderStrip(report.hourly, report.daylight);
     renderSources(report.sources);
   } catch (error) {
     statusElement.hidden = false;

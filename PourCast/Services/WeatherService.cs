@@ -21,7 +21,8 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         IEnumerable<Task<ProviderResult>> tasks = providers.Select(x => GetForecastAsync(x, latitude, longitude, cancellationToken));
         ProviderResult[] results = await Task.WhenAll(tasks);
         List<HourlySummary> hourly = results.Where(x => x.Forecast is not null).SelectMany(x => x.Forecast!.Hourly).GroupBy(x => x.Time.ToUniversalTime()).OrderBy(x => x.Key).Select(Summarise).ToList();
-        return new WeatherReport { Sources = [.. results], Hourly = hourly };
+        List<Daylight> daylight = SunCalculator.Calculate(latitude, longitude, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), 9);
+        return new WeatherReport { Sources = [.. results], Hourly = hourly, Daylight = daylight };
     }
 
     /// <summary>

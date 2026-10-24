@@ -14,4 +14,9 @@ public class WeatherReport
     /// The hourly forecast combined across sources.
     /// </summary>
     public List<HourlySummary> Hourly { get; set; } = [];
+
+    /// <summary>
+    /// Sunrise and sunset for the days covered by the forecast.
+    /// </summary>
+    public List<Daylight> Daylight { get; set; } = [];
 }

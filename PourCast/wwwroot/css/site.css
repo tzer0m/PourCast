@@ -8,6 +8,8 @@
   --now: #eef4ff;
   --temperature: #f97316;
   --rain: 59, 130, 246;
+  --night: rgba(40, 52, 90, 0.07);
+  --sun: #e0a100;
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 8px 24px rgba(16, 24, 40, 0.06);
 }
 
@@ -21,6 +23,8 @@
     --grid-strong: #344050;
     --now: #1f2a3a;
     --rain: 96, 165, 250;
+    --night: rgba(0, 0, 0, 0.32);
+    --sun: #f5c542;
     --shadow: none;
   }
 }
@@ -114,6 +118,28 @@ body {
 
 .strip {
   display: block;
+}
+
+.night {
+  fill: var(--night);
+}
+
+.swatch-night {
+  background: var(--night);
+  border: 1px solid var(--grid-strong);
+}
+
+.sun-line {
+  stroke: var(--sun);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+  opacity: 0.8;
+}
+
+.sun-label {
+  fill: var(--sun);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .now-column {
