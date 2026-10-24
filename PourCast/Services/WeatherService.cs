@@ -84,7 +84,9 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
             PrecipitationAverage = Average(precipitation),
             PrecipitationMin = Min(precipitation),
             PrecipitationMax = Max(precipitation),
-            PrecipitationProbabilityAverage = Average(probabilities)
+            PrecipitationProbabilityAverage = Average(probabilities),
+            PrecipitationProbabilityMin = Min(probabilities),
+            PrecipitationProbabilityMax = Max(probabilities)
         };
     }
 

@@ -119,4 +119,14 @@ public class HourlySummary
     /// Average chance of precipitation across sources in percent.
     /// </summary>
     public double? PrecipitationProbabilityAverage { get; set; }
+
+    /// <summary>
+    /// Lowest chance of precipitation across sources in percent.
+    /// </summary>
+    public double? PrecipitationProbabilityMin { get; set; }
+
+    /// <summary>
+    /// Highest chance of precipitation across sources in percent.
+    /// </summary>
+    public double? PrecipitationProbabilityMax { get; set; }
 }

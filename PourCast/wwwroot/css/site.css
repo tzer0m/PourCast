@@ -303,6 +303,18 @@ body {
   fill: rgb(var(--rain));
 }
 
+.chance-line {
+  fill: none;
+  stroke: rgb(var(--rain));
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+
+.value-chance {
+  opacity: 0.75;
+}
+
 .value-rain {
   fill: rgb(var(--rain));
 }

@@ -283,6 +283,14 @@ function renderStrip(hourly, daylight) {
     stripElement.appendChild(svg("path", { class: "rain-area", d: `${linearPath(rainPoints)} L ${lastX} ${layout.rainBottom} L ${firstX} ${layout.rainBottom} Z` }));
     stripElement.appendChild(svg("path", { class: "rain-line", d: linearPath(rainPoints) }));
   }
+
+  // Chance of rain as a dashed line on a 0-100% scale across the rain section.
+  const chanceY = pct => layout.rainBottom - pct / 100 * (layout.rainBottom - layout.rainTop);
+  band("range-rain", "precipitationProbabilityMin", "precipitationProbabilityMax", chanceY);
+  const chancePoints = hours.map((h, i) => [centre(i), h.precipitationProbabilityAverage]).filter(([, pct]) => pct !== null).map(([x, pct]) => [x, chanceY(pct)]);
+  if (chancePoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "chance-line", d: linearPath(chancePoints) }));
+  }
   const feelsLikePoints = hours.map((h, i) => [centre(i), h.feelsLikeAverage]).filter(([, t]) => t !== null).map(([x, t]) => [x, temperatureY(t)]);
   const uvPoints = hours.map((h, i) => [centre(i), h.uvIndexAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
   const uvClearSkyPoints = hours.map((h, i) => [centre(i), h.uvIndexClearSkyAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
@@ -318,10 +326,14 @@ function renderStrip(hourly, daylight) {
     if (h.uvIndexAverage !== null) {
       valueLabel("value-uv", x, uvY(h.uvIndexAverage), !clearSkyAbove || h.uvIndexClearSkyAverage === null, h.uvIndexAverage.toFixed(1));
     }
-    if ((h.precipitationAverage ?? 0) > 0) {
-      const rain = h.precipitationAverage;
-      const amount = rain < 0.1 ? "<0.1" : rain.toFixed(1);
-      valueLabel("value-rain", x, rainY(Math.max(rain, h.precipitationMax ?? rain)), true, h.precipitationProbabilityAverage === null ? amount : `${amount} - ${Math.round(h.precipitationProbabilityAverage)}%`);
+    const rain = h.precipitationAverage ?? 0;
+    const chance = h.precipitationProbabilityAverage;
+    const chanceAbove = chance === null || rain === 0 || chanceY(chance) <= rainY(rain);
+    if (rain > 0) {
+      valueLabel("value-rain", x, rainY(rain), !chanceAbove, rain < 0.1 ? "<0.1" : rain.toFixed(1));
+    }
+    if (chance !== null && chance > 0) {
+      valueLabel("value-rain value-chance", x, chanceY(chance), chanceAbove, `${Math.round(chance)}%`);
     }
     if (h.humidityAverage !== null) {
       valueLabel("value-humidity", x, humidityY(h.humidityAverage), h.humidityAverage < 75, `${Math.round(h.humidityAverage)}%`);
