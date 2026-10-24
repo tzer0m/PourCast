@@ -44,6 +44,19 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     }
 
     /// <summary>
+    /// Gets the forecasts from every provider configured for the range that succeeded, without combining them.
+    /// </summary>
+    /// <param name="latitude">The latitude of the location.</param>
+    /// <param name="longitude">The longitude of the location.</param>
+    /// <param name="range">The forecast range.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    public async Task<List<Forecast>> GetForecastsAsync(double latitude, double longitude, ForecastRange range, CancellationToken cancellationToken)
+    {
+        ProviderResult[] results = await GatherAsync(latitude, longitude, range, cancellationToken);
+        return [.. results.Where(x => x.Forecast is not null).Select(x => x.Forecast!)];
+    }
+
+    /// <summary>
     /// Asks every provider configured for the range, in parallel, and records today's usage on each result.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

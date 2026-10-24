@@ -34,4 +34,24 @@ public class ScoringOptions
     /// How many hours of METARs to fetch each time, so gaps from restarts are filled in.
     /// </summary>
     public int MetarHours { get; set; } = 24;
+
+    /// <summary>
+    /// The UTC hours forecasts are recorded at.
+    /// </summary>
+    public List<int> SnapshotHours { get; set; } = [];
+
+    /// <summary>
+    /// How many days ahead of each snapshot to record.
+    /// </summary>
+    public int SnapshotDays { get; set; } = 7;
+
+    /// <summary>
+    /// How long to wait before retrying a snapshot that failed, in minutes.
+    /// </summary>
+    public int RetryMinutes { get; set; } = 10;
+
+    /// <summary>
+    /// The source name the combined forecast is recorded under.
+    /// </summary>
+    public string CombinedSource { get; set; } = string.Empty;
 }

@@ -61,6 +61,7 @@ builder.Services.AddDbContext<ScoringDbContext>(options => options.UseNpgsql(bui
 builder.Services.Configure<ScoringOptions>(builder.Configuration.GetSection("Scoring"));
 builder.Services.AddHttpClient<MetarClient>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<ScoringOptions>>().Value.MetarBaseUrl));
 builder.Services.AddHostedService<ObservationService>();
+builder.Services.AddHostedService<SnapshotService>();
 
 // Create the web application, bring the database up to date and configure.
 WebApplication app = builder.Build();

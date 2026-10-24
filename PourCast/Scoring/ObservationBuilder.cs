@@ -33,9 +33,10 @@ public static class ObservationBuilder
         {
             return [];
         }
-        List<(DateTimeOffset Time, MetarReport Report)> timed = reports.Select(x => (DateTimeOffset.FromUnixTimeSeconds(x.ObservationTime), x)).ToList();
+        List<(DateTimeOffset Time, MetarReport Report)> value = [.. reports.Select(x => (DateTimeOffset.FromUnixTimeSeconds(x.ObservationTime), x))];
+        List<(DateTimeOffset Time, MetarReport Report)> timed = value;
         DateTimeOffset latest = timed[^1].Time;
-        List<DateTimeOffset> hours = timed.Select(x => HourStart(x.Time.AddMinutes(30))).Distinct().ToList();
+        List<DateTimeOffset> hours = [.. timed.Select(x => HourStart(x.Time.AddMinutes(30))).Distinct()];
         List<Observation> observations = [];
         foreach (DateTimeOffset hour in hours)
         {
@@ -44,12 +45,11 @@ public static class ObservationBuilder
             {
                 continue;
             }
-            (DateTimeOffset Time, MetarReport Report) closest = timed.MinBy(x => Math.Abs((x.Time - hour).TotalMinutes));
-            if (Math.Abs((closest.Time - hour).TotalMinutes) > 30)
+            (DateTimeOffset closestTime, MetarReport report) = timed.MinBy(x => Math.Abs((x.Time - hour).TotalMinutes));
+            if (Math.Abs((closestTime - hour).TotalMinutes) > 30)
             {
                 continue;
             }
-            MetarReport report = closest.Report;
             bool raining = timed.Any(x => x.Time > hour && x.Time <= hour.AddHours(1) && HasPrecipitation(x.Report.Weather)) || timed.Any(x => x.Time > hour.AddHours(1) && x.Time <= hour.AddMinutes(90) && HasRecentPrecipitation(x.Report.Raw));
             double? humidity = Humidity(report.Temperature, report.DewPoint);
             double? windSpeed = report.WindSpeed * KnotsToMph;
