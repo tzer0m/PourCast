@@ -17,6 +17,25 @@ window.addEventListener("resize", () => {
 const rangesElement = document.getElementById("ranges");
 let selectedRange = new URL(window.location.href).searchParams.get("range") ?? "today";
 
+// Source list at the bottom: a tick if the source fed this view, a cross if it failed or isn't used for it.
+const sourcesElement = document.getElementById("sources");
+const rangeNames = { Week: "Days and 7 Days", Month: "30 Days" };
+
+function renderSources(sources) {
+  sourcesElement.replaceChildren();
+  sourcesElement.appendChild(Object.assign(document.createElement("span"), { className: "sources-title", textContent: "Sources" }));
+  sources.forEach(source => {
+    const item = document.createElement("span");
+    item.className = `source source-${source.status === "Used" ? "used" : source.status === "Failed" ? "failed" : "not-used"}`;
+    item.appendChild(Object.assign(document.createElement("span"), { className: "source-icon", textContent: source.status === "Used" ? "✓" : "✗" }));
+    item.appendChild(document.createTextNode(source.source));
+    const ranges = source.ranges.map(r => rangeNames[r] ?? r).join(", ");
+    item.title = source.status === "Used" ? `Used for this view (${ranges})` : source.status === "Failed" ? `Failed: ${source.error}` : `Not used for this view (only ${ranges})`;
+    sourcesElement.appendChild(item);
+  });
+  sourcesElement.hidden = false;
+}
+
 function render() {
   const ranges = availableRanges(lastReport.hourly);
   const range = ranges.find(r => r.key === selectedRange) ?? ranges[0];
@@ -36,6 +55,7 @@ function render() {
     });
     rangesElement.appendChild(chip);
   });
+  renderSources(lastReport.sources);
   const hours = hoursInRange(lastReport.hourly, range);
   renderSummary(hours, lastReport.daylight, range);
   if (!renderChart(columnsForRange(hours, range), lastReport.daylight, range.stepHours)) {

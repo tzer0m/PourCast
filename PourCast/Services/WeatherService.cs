@@ -19,7 +19,8 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task<WeatherReport> GetReportAsync(double latitude, double longitude, ForecastRange range, CancellationToken cancellationToken)
     {
-        IEnumerable<Task<ProviderResult>> tasks = providers.Where(x => x.Ranges.Contains(range)).Select(x => GetForecastAsync(x, latitude, longitude, cancellationToken));
+        // Only providers configured for the range are asked; the rest are still listed so the page can show them.
+        IEnumerable<Task<ProviderResult>> tasks = providers.Select(x => x.Ranges.Contains(range) ? GetForecastAsync(x, latitude, longitude, cancellationToken) : Task.FromResult(new ProviderResult { Source = x.Name, Status = ProviderStatus.NotUsed, Ranges = [.. x.Ranges] }));
         ProviderResult[] results = await Task.WhenAll(tasks);
         List<HourlySummary> hourly = results.Where(x => x.Forecast is not null).SelectMany(x => x.Forecast!.Hourly).GroupBy(x => x.Time.ToUniversalTime()).OrderBy(x => x.Key).Select(Summarise).ToList();
         List<Daylight> daylight = SunCalculator.Calculate(latitude, longitude, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), range == ForecastRange.Month ? 38 : 10);
@@ -39,12 +40,12 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         try
         {
             Forecast forecast = await provider.GetForecastAsync(latitude, longitude, cancellationToken);
-            return new ProviderResult { Source = provider.Name, Forecast = forecast };
+            return new ProviderResult { Source = provider.Name, Status = ProviderStatus.Used, Ranges = [.. provider.Ranges], Forecast = forecast };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Failed to get forecast from {Provider}.", provider.Name);
-            return new ProviderResult { Source = provider.Name, Error = ex.Message };
+            return new ProviderResult { Source = provider.Name, Status = ProviderStatus.Failed, Ranges = [.. provider.Ranges], Error = ex.Message };
         }
     }
 

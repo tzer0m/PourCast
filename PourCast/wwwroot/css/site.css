@@ -189,6 +189,53 @@ body {
   color: var(--surface);
 }
 
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.25rem;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.sources[hidden] {
+  display: none;
+}
+
+.sources-title {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+.source {
+  cursor: default;
+}
+
+.source-used {
+  color: var(--text);
+}
+
+.source-icon {
+  margin-right: 0.3rem;
+  font-weight: 700;
+}
+
+.source-used .source-icon {
+  color: #22c55e;
+}
+
+.source-failed {
+  color: #ef4444;
+}
+
+.source-not-used {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
 .status {
   color: var(--muted);
 }
