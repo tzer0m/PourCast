@@ -38,19 +38,6 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     }
 
     /// <summary>
-    /// Gets each source's own mapped hours for a range, without combining them, for comparing sources side by side.
-    /// </summary>
-    /// <param name="latitude">The latitude of the location.</param>
-    /// <param name="longitude">The longitude of the location.</param>
-    /// <param name="range">The forecast range.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    public async Task<List<SourceForecast>> GetSourceForecastsAsync(double latitude, double longitude, ForecastRange range, CancellationToken cancellationToken)
-    {
-        ProviderResult[] results = await GatherAsync(latitude, longitude, range, cancellationToken);
-        return results.Select(x => new SourceForecast { Source = x.Source, Status = x.Status, Error = x.Error, Hourly = x.Forecast?.Hourly ?? [] }).ToList();
-    }
-
-    /// <summary>
     /// Asks every provider configured for the range, in parallel, and records today's usage on each result.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

@@ -58,9 +58,6 @@ function renderSources(sources) {
     item.title = `${state}\n${usage}`;
     sourcesElement.appendChild(item);
   });
-  // Link to the side by side comparison for the current place.
-  const compare = Object.assign(document.createElement("a"), { className: "sources-compare", textContent: "Compare", href: `/sources${window.location.search}` });
-  sourcesElement.appendChild(compare);
   sourcesElement.hidden = false;
 }
 
