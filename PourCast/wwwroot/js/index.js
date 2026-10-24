@@ -605,14 +605,41 @@ function renderSummary(hourly, daylight) {
   }
 }
 
-async function load(latitude, longitude) {
+// Current place, kept in the URL so it can be bookmarked.
+const placeNameElement = document.getElementById("place-name");
+const placeDetailElement = document.getElementById("place-detail");
+const searchInput = document.getElementById("search-input");
+const searchResults = document.getElementById("search-results");
+
+function showPlace(name, detail) {
+  placeNameElement.textContent = name;
+  placeDetailElement.textContent = detail ?? "";
+  document.title = `${name} - PourCast`;
+}
+
+function savePlace(place) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("lat", place.latitude.toFixed(4));
+  url.searchParams.set("lon", place.longitude.toFixed(4));
+  url.searchParams.set("name", place.name);
+  if (place.detail) url.searchParams.set("detail", place.detail); else url.searchParams.delete("detail");
+  history.replaceState(null, "", url);
+}
+
+async function load(latitude, longitude, name, detail) {
+  statusElement.hidden = false;
   statusElement.textContent = "Loading Forecast…";
+  if (name) showPlace(name, detail);
   try {
     const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     statusElement.hidden = true;
     lastReport = report;
+    if (!name) {
+      showPlace(report.locationName ?? `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`, "Current Location");
+    }
+    savePlace({ latitude, longitude, name: placeNameElement.textContent, detail: placeDetailElement.textContent });
     document.getElementById("dashboard").hidden = false;
     renderSummary(report.hourly, report.daylight);
     renderStrip(report.hourly, report.daylight);
@@ -622,8 +649,81 @@ async function load(latitude, longitude) {
   }
 }
 
-if ("geolocation" in navigator) {
-  navigator.geolocation.getCurrentPosition(p => load(p.coords.latitude, p.coords.longitude), e => { statusElement.textContent = `Couldn't get your location (${e.message}).`; }, { timeout: 10000, maximumAge: 600000 });
+function locate() {
+  if (!("geolocation" in navigator)) {
+    statusElement.textContent = "Your browser doesn't support location. Search for a place instead.";
+    return;
+  }
+  statusElement.hidden = false;
+  statusElement.textContent = "Finding Your Location…";
+  navigator.geolocation.getCurrentPosition(p => load(p.coords.latitude, p.coords.longitude), e => { statusElement.textContent = `Couldn't get your location (${e.message}). Search for a place instead.`; }, { timeout: 10000, maximumAge: 600000 });
+}
+
+// Place search with a short debounce.
+let searchTimer = null;
+let searchController = null;
+let results = [];
+
+function closeResults() {
+  searchResults.hidden = true;
+  searchResults.replaceChildren();
+}
+
+function choosePlace(place) {
+  closeResults();
+  searchInput.value = "";
+  searchInput.blur();
+  const detail = [place.region, place.country].filter(Boolean).join(", ");
+  load(place.latitude, place.longitude, place.name, detail);
+}
+
+async function search(query) {
+  searchController?.abort();
+  searchController = new AbortController();
+  try {
+    const response = await fetch(`?handler=search&query=${encodeURIComponent(query)}`, { signal: searchController.signal });
+    if (!response.ok) return;
+    results = await response.json();
+    searchResults.replaceChildren();
+    if (results.length === 0) {
+      searchResults.appendChild(element("li", "search-empty", "No Places Found"));
+    }
+    results.forEach(place => {
+      const item = element("li", "search-result");
+      item.appendChild(element("span", "search-result-name", place.name));
+      item.appendChild(element("span", "search-result-detail", [place.region, place.country].filter(Boolean).join(", ")));
+      item.addEventListener("mousedown", e => { e.preventDefault(); choosePlace(place); });
+      searchResults.appendChild(item);
+    });
+    searchResults.hidden = false;
+  } catch (error) {
+    if (error.name !== "AbortError") closeResults();
+  }
+}
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  const query = searchInput.value.trim();
+  if (query.length < 2) {
+    results = [];
+    closeResults();
+    return;
+  }
+  searchTimer = setTimeout(() => search(query), 250);
+});
+searchInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && results.length > 0) choosePlace(results[0]);
+  if (e.key === "Escape") closeResults();
+});
+searchInput.addEventListener("blur", () => setTimeout(closeResults, 100));
+document.getElementById("locate").addEventListener("click", locate);
+
+// Start from the place in the URL if there is one, otherwise the browser location.
+const startUrl = new URL(window.location.href);
+const startLatitude = parseFloat(startUrl.searchParams.get("lat"));
+const startLongitude = parseFloat(startUrl.searchParams.get("lon"));
+if (!Number.isNaN(startLatitude) && !Number.isNaN(startLongitude)) {
+  load(startLatitude, startLongitude, startUrl.searchParams.get("name") ?? undefined, startUrl.searchParams.get("detail") ?? undefined);
 } else {
-  statusElement.textContent = "Your browser doesn't support location.";
+  locate();
 }

@@ -6,6 +6,11 @@ namespace PourCast.Models;
 public class WeatherReport
 {
     /// <summary>
+    /// The name of the location, from the first source that supplies one.
+    /// </summary>
+    public string? LocationName { get; set; }
+
+    /// <summary>
     /// The result from each source.
     /// </summary>
     public List<ProviderResult> Sources { get; set; } = [];

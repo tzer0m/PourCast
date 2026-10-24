@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PourCast.Models;
 using PourCast.Services;
+using PourCast.Services.Geocoding;
 
 namespace PourCast.Pages;
 
@@ -9,7 +10,8 @@ namespace PourCast.Pages;
 /// Page model for the home page.
 /// </summary>
 /// <param name="weatherService">The weather service.</param>
-public class IndexModel(WeatherService weatherService) : PageModel
+/// <param name="geocodingService">The place search service.</param>
+public class IndexModel(WeatherService weatherService, GeocodingService geocodingService) : PageModel
 {
     /// <summary>
     /// Handles GET requests for the home page.
@@ -28,5 +30,16 @@ public class IndexModel(WeatherService weatherService) : PageModel
     {
         WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, cancellationToken);
         return new JsonResult(report);
+    }
+
+    /// <summary>
+    /// Returns places matching a search as JSON.
+    /// </summary>
+    /// <param name="query">The place name to search for.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    public async Task<JsonResult> OnGetSearchAsync(string query, CancellationToken cancellationToken)
+    {
+        List<Place> places = await geocodingService.SearchAsync(query ?? string.Empty, cancellationToken);
+        return new JsonResult(places);
     }
 }

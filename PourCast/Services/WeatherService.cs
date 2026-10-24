@@ -22,7 +22,8 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         ProviderResult[] results = await Task.WhenAll(tasks);
         List<HourlySummary> hourly = results.Where(x => x.Forecast is not null).SelectMany(x => x.Forecast!.Hourly).GroupBy(x => x.Time.ToUniversalTime()).OrderBy(x => x.Key).Select(Summarise).ToList();
         List<Daylight> daylight = SunCalculator.Calculate(latitude, longitude, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1), 9);
-        return new WeatherReport { Sources = [.. results], Hourly = hourly, Daylight = daylight };
+        string? locationName = results.Select(x => x.Forecast?.LocationName).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+        return new WeatherReport { LocationName = locationName, Sources = [.. results], Hourly = hourly, Daylight = daylight };
     }
 
     /// <summary>

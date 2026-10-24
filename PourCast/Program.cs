@@ -3,6 +3,7 @@ using PourCast.Providers;
 using PourCast.Providers.MetOffice;
 using PourCast.Providers.OpenMeteo;
 using PourCast.Services;
+using PourCast.Services.Geocoding;
 using System.Text.Json.Serialization;
 
 // Create web application builder.
@@ -17,6 +18,10 @@ builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice",
 builder.Services.Configure<OpenMeteoOptions>(builder.Configuration.GetSection("Providers:OpenMeteo"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoProvider>("OpenMeteo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoOptions>>().Value.BaseUrl));
 builder.Services.AddTransient<WeatherService>();
+
+// Register place search.
+builder.Services.Configure<GeocodingOptions>(builder.Configuration.GetSection("Geocoding"));
+builder.Services.AddHttpClient<GeocodingService>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<GeocodingOptions>>().Value.BaseUrl));
 
 // Create the web application and configure.
 WebApplication app = builder.Build();

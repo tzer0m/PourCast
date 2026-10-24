@@ -3,6 +3,19 @@
 @{
     ViewData["Title"] = "Home";
 }
+<header class="topbar">
+    <div class="place">
+        <h1 id="place-name" class="place-name">PourCast</h1>
+        <span id="place-detail" class="place-detail"></span>
+    </div>
+    <div class="search">
+        <input id="search-input" class="search-input" type="search" placeholder="Search for a Place" autocomplete="off" aria-label="Search for a Place" />
+        <button id="locate" class="locate" type="button" title="Use My Location" aria-label="Use My Location">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.5" fill="currentColor" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+        </button>
+        <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+</header>
 <p id="status" class="status">Finding Your Location…</p>
 <div id="dashboard" class="dashboard" hidden>
 <section id="summary" class="summary"></section>
