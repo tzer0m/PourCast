@@ -175,7 +175,7 @@ function renderStrip(hourly, daylight) {
       bar.appendChild(svg("title", {}, `${rain.toFixed(1)} mm · ${Math.round(chance * 100)}% Chance`));
       stripElement.appendChild(bar);
       if (rain >= 0.1) {
-        stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, rain.toFixed(1)));
+        stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, h.precipitationProbabilityAverage === null ? rain.toFixed(1) : `${rain.toFixed(1)} - ${Math.round(h.precipitationProbabilityAverage)}%`));
       }
     }
   });
@@ -200,10 +200,6 @@ window.addEventListener("resize", () => {
   resizeTimer = setTimeout(() => { if (lastReport) renderStrip(lastReport.hourly, lastReport.daylight); }, 150);
 });
 
-function renderSources(sources) {
-  document.getElementById("sources").textContent = "Sources: " + sources.map(s => s.forecast ? s.source : `${s.source} (Unavailable)`).join(" · ");
-}
-
 async function load(latitude, longitude) {
   statusElement.textContent = "Loading Forecast…";
   try {
@@ -213,7 +209,6 @@ async function load(latitude, longitude) {
     statusElement.hidden = true;
     lastReport = report;
     renderStrip(report.hourly, report.daylight);
-    renderSources(report.sources);
   } catch (error) {
     statusElement.hidden = false;
     statusElement.textContent = `Couldn't load the forecast (${error.message}).`;

@@ -5,22 +5,12 @@
 }
 <p id="status" class="status">Finding Your Location…</p>
 <section id="hourly" class="card" hidden>
-    <div class="card-header">
-        <h2>Next 24 Hours</h2>
-        <div class="legend">
-            <span class="legend-item"><span class="swatch swatch-average"></span>Average</span>
-            <span class="legend-item"><span class="swatch swatch-range"></span>Source Range</span>
-            <span class="legend-item"><span class="swatch swatch-rain"></span>Rain (Shade = Chance)</span>
-            <span class="legend-item"><span class="swatch swatch-night"></span>Night</span>
-        </div>
-    </div>
     <div class="chart">
         <svg id="axis" class="axis"></svg>
         <div id="strip-scroll" class="strip-scroll">
             <svg id="strip" class="strip"></svg>
         </div>
     </div>
-    <p id="sources" class="sources"></p>
 </section>
 @section Scripts {
     <script src="~/js/index.js" asp-append-version="true"></script>
