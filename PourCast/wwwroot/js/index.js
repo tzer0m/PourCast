@@ -17,6 +17,18 @@ window.addEventListener("resize", () => {
 const rangesElement = document.getElementById("ranges");
 let selectedRange = new URL(window.location.href).searchParams.get("range") ?? "today";
 
+// Close the range dropdown when tapping anywhere outside it (pointer events rather than focus, as Safari doesn't focus tapped buttons).
+let closeRangeMenu = () => {};
+document.addEventListener("pointerdown", e => closeRangeMenu(e.target));
+
+function selectRange(key) {
+  selectedRange = key;
+  const url = new URL(window.location.href);
+  if (key === "today") url.searchParams.delete("range"); else url.searchParams.set("range", key);
+  history.replaceState(null, "", url);
+  render();
+}
+
 // Source list at the bottom: a tick if the source fed this view, a cross if it failed or isn't used for it.
 const sourcesElement = document.getElementById("sources");
 const rangeNames = { Week: "Days and 7 Days", Month: "30 Days" };
@@ -40,21 +52,50 @@ function render() {
   const ranges = availableRanges(lastReport.hourly);
   const range = ranges.find(r => r.key === selectedRange) ?? ranges[0];
   selectedRange = range.key;
+  // Chips for wide screens and a custom dropdown for phones; CSS shows whichever fits.
   rangesElement.replaceChildren();
+  const menu = document.createElement("div");
+  menu.className = "range-menu";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "range-menu-button";
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+  button.appendChild(Object.assign(document.createElement("span"), { textContent: range.label }));
+  button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>');
+  const list = document.createElement("ul");
+  list.className = "range-menu-list";
+  list.setAttribute("role", "listbox");
+  list.hidden = true;
+  const setOpen = open => {
+    list.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+    menu.classList.toggle("range-menu-open", open);
+  };
+  button.addEventListener("click", () => setOpen(list.hidden));
+  closeRangeMenu = target => { if (!menu.contains(target)) setOpen(false); };
+  menu.addEventListener("keydown", e => { if (e.key === "Escape") { setOpen(false); button.focus(); } });
   ranges.forEach(r => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = r.key === range.key ? "range-chip range-chip-selected" : "range-chip";
     chip.textContent = r.label;
-    chip.addEventListener("click", () => {
-      selectedRange = r.key;
-      const url = new URL(window.location.href);
-      if (r.key === "today") url.searchParams.delete("range"); else url.searchParams.set("range", r.key);
-      history.replaceState(null, "", url);
-      render();
-    });
+    chip.addEventListener("click", () => selectRange(r.key));
     rangesElement.appendChild(chip);
+    const item = document.createElement("li");
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = r.key === range.key ? "range-menu-option range-menu-option-selected" : "range-menu-option";
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", String(r.key === range.key));
+    option.textContent = r.label;
+    option.addEventListener("click", () => selectRange(r.key));
+    item.appendChild(option);
+    list.appendChild(item);
   });
+  menu.appendChild(button);
+  menu.appendChild(list);
+  rangesElement.appendChild(menu);
   renderSources(lastReport.sources);
   const hours = hoursInRange(lastReport.hourly, range);
   renderSummary(hours, lastReport.daylight, range);

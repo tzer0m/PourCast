@@ -189,6 +189,77 @@ body {
   color: var(--surface);
 }
 
+.range-menu {
+  display: none;
+  position: relative;
+  width: 100%;
+}
+
+.range-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--grid-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.range-menu-button svg {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.range-menu-open .range-menu-button svg {
+  transform: rotate(180deg);
+}
+
+.range-menu-list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--grid-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.range-menu-option {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.range-menu-option:hover {
+  background: var(--now);
+  color: var(--text);
+}
+
+.range-menu-option-selected {
+  background: var(--now);
+  color: var(--text);
+  font-weight: 600;
+}
+
 .sources {
   display: flex;
   flex-wrap: wrap;
@@ -770,6 +841,15 @@ body {
   /* Phones only get the essentials: title, current value and the high/low. */
   .sliders, .tile-table, .tile-secondary {
     display: none;
+  }
+
+  /* Range chips become a single dropdown. */
+  .range-chip {
+    display: none;
+  }
+
+  .range-menu {
+    display: block;
   }
 
   .tile-main {
