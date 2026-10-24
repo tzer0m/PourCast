@@ -27,7 +27,7 @@ public class GeocodingService(HttpClient httpClient, IOptions<GeocodingOptions> 
             return [];
         }
         string key = $"geocoding:{trimmed.ToLowerInvariant()}";
-        List<Place>? places = await cache.GetOrCreateAsync(key, async (ICacheEntry entry) =>
+        List<Place>? places = await cache.GetOrCreateAsync(key, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.CacheMinutes);
             string url = string.Create(CultureInfo.InvariantCulture, $"v1/search?name={Uri.EscapeDataString(trimmed)}&count={options.Value.ResultCount}&language=en&format=json");

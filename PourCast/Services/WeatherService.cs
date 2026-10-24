@@ -29,7 +29,7 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     public async Task<WeatherReport> GetReportAsync(double latitude, double longitude, ForecastRange range, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {
         ProviderResult[] results = await GatherAsync(latitude, longitude, range, cancellationToken);
-        List<Forecast> forecasts = results.Where(x => x.Forecast is not null).Select(x => x.Forecast!).ToList();
+        List<Forecast> forecasts = [.. results.Where(x => x.Forecast is not null).Select(x => x.Forecast!)];
         // Outliers are counted from the hourly combine only, so each excluded value is counted once.
         Dictionary<string, Dictionary<string, int>> exclusions = [];
         List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts), combiningOptions.Value, exclusions);
