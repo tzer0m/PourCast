@@ -30,6 +30,13 @@ const chartLayout = {
   minimumRainScale: 0.5
 };
 
+// Narrower columns and smaller icons for phones, so more hours fit on screen.
+const phoneLayout = {
+  minimumColumnWidth: 40,
+  iconY: 33,
+  iconSize: 30
+};
+
 // Adds a row at the top for day names, pushing everything else down. Used by the 7 day view.
 function withDayRow(base) {
   const rowHeight = 20;
@@ -82,19 +89,20 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
     return null;
   }
   document.getElementById("dashboard").hidden = false;
+  const screenLayout = window.matchMedia("(max-width: 900px)").matches ? { ...chartLayout, ...phoneLayout } : chartLayout;
 
   // Stretch columns so visibleColumns fill the available width, scrolling only when they would get too narrow.
   // Sized before the layout, so a scrollbar is already in place when the height is measured.
   const scroll = document.getElementById("strip-scroll");
   stripElement.setAttribute("width", 0);
-  axisElement.setAttribute("width", chartLayout.axisWidth);
+  axisElement.setAttribute("width", screenLayout.axisWidth);
   // Rounded down to a hundredth of a pixel so the total never exceeds the space and triggers a scrollbar.
-  const columnWidth = Math.max(chartLayout.minimumColumnWidth, Math.floor(scroll.clientWidth / visibleColumns * 100) / 100);
+  const columnWidth = Math.max(screenLayout.minimumColumnWidth, Math.floor(scroll.clientWidth / visibleColumns * 100) / 100);
   const width = hours.length * columnWidth;
   stripElement.setAttribute("width", width);
 
   const hasUv = hours.some(h => h.uvIndexAverage !== null || h.uvIndexClearSkyAverage !== null);
-  const baseLayout = stepHours === 6 ? withDayRow(chartLayout) : chartLayout;
+  const baseLayout = stepHours === 6 ? withDayRow(screenLayout) : screenLayout;
   const layout = fitLayout(hasUv ? baseLayout : withoutUv(baseLayout));
   const daily = stepHours >= 24;
 
