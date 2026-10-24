@@ -20,6 +20,11 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     public string Name => "Open-Meteo";
 
     /// <summary>
+    /// The forecast ranges this provider is used for.
+    /// </summary>
+    public IReadOnlyList<ForecastRange> Ranges => options.Value.Ranges;
+
+    /// <summary>
     /// Gets the forecast for a location from Open-Meteo, using the cache where possible.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>
@@ -44,11 +49,11 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     /// <param name="cancellationToken">The cancellation token.</param>
     private async Task<Forecast> FetchForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
     {
-        // Request the forecast in UK units with times local to the location.
+        // Request the forecast in UK units with UTC times, so hours stay correct across clock changes.
         string current = "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
         string hourly = "temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,uv_index_clear_sky";
         string daily = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset";
-        string url = string.Create(CultureInfo.InvariantCulture, $"v1/forecast?latitude={latitude}&longitude={longitude}&current={current}&hourly={hourly}&daily={daily}&timezone=auto&wind_speed_unit=mph&forecast_days={options.Value.ForecastDays}");
+        string url = string.Create(CultureInfo.InvariantCulture, $"v1/forecast?latitude={latitude}&longitude={longitude}&current={current}&hourly={hourly}&daily={daily}&timezone=GMT&wind_speed_unit=mph&forecast_days={options.Value.ForecastDays}");
         OpenMeteoResponse response = await httpClient.GetFromJsonAsync<OpenMeteoResponse>(url, cancellationToken) ?? throw new InvalidOperationException("Open-Meteo returned an empty response.");
         TimeSpan offset = TimeSpan.FromSeconds(response.UtcOffsetSeconds);
 
@@ -79,7 +84,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
         return new CurrentConditions
         {
             Time = ParseTime(current.Time, offset),
-            Condition = MapCondition(current.WeatherCode),
+            Condition = WmoCodes.ToCondition(current.WeatherCode),
             IsDay = current.IsDay is null ? null : current.IsDay == 1,
             Temperature = current.Temperature,
             FeelsLike = current.ApparentTemperature,
@@ -110,7 +115,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
             result.Add(new HourlyForecast
             {
                 Time = ParseTime(hourly.Time[i], offset),
-                Condition = MapCondition(At(hourly.WeatherCode, i)),
+                Condition = WmoCodes.ToCondition(At(hourly.WeatherCode, i)),
                 Temperature = At(hourly.Temperature, i),
                 FeelsLike = At(hourly.ApparentTemperature, i),
                 PrecipitationProbability = At(hourly.PrecipitationProbability, i),
@@ -146,7 +151,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
             result.Add(new DailyForecast
             {
                 Date = DateOnly.Parse(daily.Time[i], CultureInfo.InvariantCulture),
-                Condition = MapCondition(At(daily.WeatherCode, i)),
+                Condition = WmoCodes.ToCondition(At(daily.WeatherCode, i)),
                 TemperatureMax = At(daily.TemperatureMax, i),
                 TemperatureMin = At(daily.TemperatureMin, i),
                 PrecipitationProbability = At(daily.PrecipitationProbabilityMax, i),
@@ -181,29 +186,5 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     private static T? At<T>(List<T> values, int index)
     {
         return index < values.Count ? values[index] : default;
-    }
-
-    /// <summary>
-    /// Maps a WMO weather code to a normalised condition.
-    /// </summary>
-    /// <param name="code">The WMO weather code.</param>
-    private static WeatherCondition MapCondition(int? code)
-    {
-        return code switch
-        {
-            0 => WeatherCondition.Clear,
-            1 or 2 => WeatherCondition.PartlyCloudy,
-            3 => WeatherCondition.Cloudy,
-            45 or 48 => WeatherCondition.Fog,
-            51 or 53 or 55 => WeatherCondition.Drizzle,
-            56 or 57 or 66 or 67 => WeatherCondition.FreezingRain,
-            61 or 63 => WeatherCondition.Rain,
-            65 => WeatherCondition.HeavyRain,
-            71 or 73 or 75 or 77 => WeatherCondition.Snow,
-            80 or 81 or 82 => WeatherCondition.Showers,
-            85 or 86 => WeatherCondition.SnowShowers,
-            95 or 96 or 99 => WeatherCondition.Thunderstorm,
-            _ => WeatherCondition.Unknown
-        };
     }
 }

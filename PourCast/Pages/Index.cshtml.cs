@@ -25,10 +25,11 @@ public class IndexModel(WeatherService weatherService, GeocodingService geocodin
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>
     /// <param name="longitude">The longitude of the location.</param>
+    /// <param name="range">The forecast range, week by default.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
+    public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken, ForecastRange range = ForecastRange.Week)
     {
-        WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, cancellationToken);
+        WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, range, cancellationToken);
         return new JsonResult(report);
     }
 

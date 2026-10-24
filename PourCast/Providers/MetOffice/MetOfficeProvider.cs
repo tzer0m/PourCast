@@ -20,6 +20,11 @@ public class MetOfficeProvider(HttpClient httpClient, IOptions<MetOfficeOptions>
     public string Name => "Met Office";
 
     /// <summary>
+    /// The forecast ranges this provider is used for.
+    /// </summary>
+    public IReadOnlyList<ForecastRange> Ranges => options.Value.Ranges;
+
+    /// <summary>
     /// Gets the forecast for a location from the Met Office, using the cache where possible.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

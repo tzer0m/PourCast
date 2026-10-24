@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using PourCast.Providers;
 using PourCast.Providers.MetOffice;
 using PourCast.Providers.OpenMeteo;
+using PourCast.Providers.OpenMeteoEnsemble;
 using PourCast.Services;
 using PourCast.Services.Geocoding;
 using System.Text.Json.Serialization;
@@ -17,6 +18,8 @@ builder.Services.Configure<MetOfficeOptions>(builder.Configuration.GetSection("P
 builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl));
 builder.Services.Configure<OpenMeteoOptions>(builder.Configuration.GetSection("Providers:OpenMeteo"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoProvider>("OpenMeteo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoOptions>>().Value.BaseUrl));
+builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
+builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl));
 builder.Services.AddTransient<WeatherService>();
 
 // Register place search.

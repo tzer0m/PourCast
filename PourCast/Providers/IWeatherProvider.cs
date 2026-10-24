@@ -13,6 +13,11 @@ public interface IWeatherProvider
     string Name { get; }
 
     /// <summary>
+    /// The forecast ranges this provider is used for.
+    /// </summary>
+    IReadOnlyList<ForecastRange> Ranges { get; }
+
+    /// <summary>
     /// Gets the forecast for a location.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>
