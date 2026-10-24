@@ -222,11 +222,10 @@ function renderStrip(hourly, daylight) {
       const y = Math.min(rainY(rain), layout.rainBottom - 2);
       const bar = svg("rect", { class: "rain-bar", x: i * columnWidth + 12, y, width: columnWidth - 24, height: layout.rainBottom - y, rx: 4 });
       bar.style.setProperty("--chance", 0.2 + 0.8 * chance);
-      bar.appendChild(svg("title", {}, `${rain.toFixed(1)} mm · ${Math.round(chance * 100)}% Chance`));
+      bar.appendChild(svg("title", {}, `${rain.toFixed(2)} mm · ${Math.round(chance * 100)}% Chance`));
       stripElement.appendChild(bar);
-      if (rain >= 0.1) {
-        stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, h.precipitationProbabilityAverage === null ? rain.toFixed(1) : `${rain.toFixed(1)} - ${Math.round(h.precipitationProbabilityAverage)}%`));
-      }
+      const amount = rain < 0.1 ? "<0.1" : rain.toFixed(1);
+      stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, h.precipitationProbabilityAverage === null ? amount : `${amount} - ${Math.round(h.precipitationProbabilityAverage)}%`));
     }
   });
 
