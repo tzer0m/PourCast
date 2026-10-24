@@ -1,5 +1,6 @@
 const statusElement = document.getElementById("status");
 const axisElement = document.getElementById("axis");
+const uvAxisElement = document.getElementById("axis-uv");
 const stripElement = document.getElementById("strip");
 const svgNamespace = "http://www.w3.org/2000/svg";
 
@@ -7,6 +8,8 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 const layout = {
   minimumColumnWidth: 56,
   axisWidth: 44,
+  uvAxisWidth: 36,
+  minimumUvScale: 4,
   height: 412,
   timeY: 22,
   iconY: 30,
@@ -146,6 +149,8 @@ function renderStrip(hourly, daylight) {
   stripElement.setAttribute("width", 0);
   axisElement.setAttribute("width", layout.axisWidth);
   axisElement.setAttribute("height", layout.height);
+  uvAxisElement.setAttribute("width", layout.uvAxisWidth);
+  uvAxisElement.setAttribute("height", layout.height);
   const columnWidth = Math.max(layout.minimumColumnWidth, scroll.clientWidth / hours.length);
   const width = hours.length * columnWidth;
   const centre = i => i * columnWidth + columnWidth / 2;
@@ -154,6 +159,7 @@ function renderStrip(hourly, daylight) {
 
   stripElement.replaceChildren();
   axisElement.replaceChildren();
+  uvAxisElement.replaceChildren();
   stripElement.setAttribute("width", width);
   stripElement.setAttribute("height", layout.height);
   stripElement.setAttribute("viewBox", `0 0 ${width} ${layout.height}`);
@@ -196,6 +202,15 @@ function renderStrip(hourly, daylight) {
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.temperatureTop - 14 }, "°C"));
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.rainTop - 14 }, "mm"));
 
+  // UV index scale on the right, sharing the temperature area.
+  const uvValues = hours.flatMap(h => [h.uvIndexAverage, h.uvIndexClearSkyAverage]).filter(u => u !== null);
+  const uvScale = Math.ceil(Math.max(layout.minimumUvScale, ...uvValues) / 2) * 2;
+  const uvY = uv => layout.temperatureBottom - uv / uvScale * (layout.temperatureBottom - layout.temperatureTop);
+  if (uvValues.length > 0) {
+    [0, uvScale / 2, uvScale].forEach(uv => uvAxisElement.appendChild(svg("text", { class: "axis-label axis-uv", x: 8, y: uvY(uv) + 4 }, `${uv}`)));
+    uvAxisElement.appendChild(svg("text", { class: "axis-unit axis-uv-unit", x: 8, y: layout.temperatureTop - 14 }, "UV"));
+  }
+
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {
     const time = new Date(h.time);
@@ -235,6 +250,14 @@ function renderStrip(hourly, daylight) {
   const averagePoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureAverage)]);
   stripElement.appendChild(svg("path", { class: "temperature-range", d: `${smoothPath(maxPoints)} ${smoothPath(minPoints, false)} Z` }));
   const feelsLikePoints = hours.map((h, i) => [centre(i), h.feelsLikeAverage]).filter(([, t]) => t !== null).map(([x, t]) => [x, temperatureY(t)]);
+  const uvPoints = hours.map((h, i) => [centre(i), h.uvIndexAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
+  const uvClearSkyPoints = hours.map((h, i) => [centre(i), h.uvIndexClearSkyAverage]).filter(([, u]) => u !== null).map(([x, u]) => [x, uvY(u)]);
+  if (uvClearSkyPoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "uv-line uv-clear-sky", d: smoothPath(uvClearSkyPoints) }));
+  }
+  if (uvPoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "uv-line", d: smoothPath(uvPoints) }));
+  }
   if (feelsLikePoints.length > 1) {
     stripElement.appendChild(svg("path", { class: "feels-like", d: smoothPath(feelsLikePoints) }));
   }

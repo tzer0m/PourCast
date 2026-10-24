@@ -46,7 +46,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     {
         // Request the forecast in UK units with times local to the location.
         string current = "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
-        string hourly = "temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
+        string hourly = "temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,uv_index_clear_sky";
         string daily = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset";
         string url = string.Create(CultureInfo.InvariantCulture, $"v1/forecast?latitude={latitude}&longitude={longitude}&current={current}&hourly={hourly}&daily={daily}&timezone=auto&wind_speed_unit=mph&forecast_days={options.Value.ForecastDays}");
         OpenMeteoResponse response = await httpClient.GetFromJsonAsync<OpenMeteoResponse>(url, cancellationToken) ?? throw new InvalidOperationException("Open-Meteo returned an empty response.");
@@ -119,7 +119,9 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
                 CloudCover = At(hourly.CloudCover, i),
                 WindSpeed = At(hourly.WindSpeed, i),
                 WindGust = At(hourly.WindGusts, i),
-                WindDirection = At(hourly.WindDirection, i)
+                WindDirection = At(hourly.WindDirection, i),
+                UvIndex = At(hourly.UvIndex, i),
+                UvIndexClearSky = At(hourly.UvIndexClearSky, i)
             });
         }
         return result;

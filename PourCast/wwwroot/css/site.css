@@ -8,6 +8,7 @@
   --now: #eef4ff;
   --temperature: #f97316;
   --feels-like: #e0457b;
+  --uv: #8b5cf6;
   --rain: 59, 130, 246;
   --night: rgba(40, 52, 90, 0.07);
   --sun: #e0a100;
@@ -170,6 +171,57 @@ body {
   font-size: 13px;
   font-weight: 600;
   text-anchor: middle;
+}
+
+.uv-line {
+  fill: none;
+  stroke: var(--uv);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.uv-clear-sky {
+  stroke-dasharray: 2 4;
+  opacity: 0.6;
+}
+
+.axis-uv, .axis-uv-unit {
+  text-anchor: start;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.legend span::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  border-top: 2px solid var(--key);
+}
+
+.legend .key-dashed::before {
+  border-top-style: dashed;
+}
+
+.legend .key-dotted::before {
+  border-top-style: dotted;
+}
+
+.legend .key-block::before {
+  height: 8px;
+  border: none;
+  border-radius: 2px;
+  background: var(--key);
 }
 
 .temperature-point {

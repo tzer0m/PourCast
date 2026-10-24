@@ -41,6 +41,16 @@ public class HourlySummary
     public double? FeelsLikeAverage { get; set; }
 
     /// <summary>
+    /// Average UV index across sources.
+    /// </summary>
+    public double? UvIndexAverage { get; set; }
+
+    /// <summary>
+    /// Average clear sky UV index across sources.
+    /// </summary>
+    public double? UvIndexClearSkyAverage { get; set; }
+
+    /// <summary>
     /// Average precipitation across sources in mm.
     /// </summary>
     public double? PrecipitationAverage { get; set; }

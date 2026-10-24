@@ -59,4 +59,14 @@ public class HourlyForecast
     /// Wind direction in degrees.
     /// </summary>
     public double? WindDirection { get; set; }
+
+    /// <summary>
+    /// UV index, allowing for cloud cover.
+    /// </summary>
+    public double? UvIndex { get; set; }
+
+    /// <summary>
+    /// UV index with a clear sky.
+    /// </summary>
+    public double? UvIndexClearSky { get; set; }
 }

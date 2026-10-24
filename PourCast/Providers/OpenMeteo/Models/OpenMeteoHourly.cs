@@ -72,4 +72,16 @@ public class OpenMeteoHourly
     /// </summary>
     [JsonPropertyName("wind_gusts_10m")]
     public List<double?> WindGusts { get; set; } = [];
+
+    /// <summary>
+    /// UV index, allowing for cloud cover.
+    /// </summary>
+    [JsonPropertyName("uv_index")]
+    public List<double?> UvIndex { get; set; } = [];
+
+    /// <summary>
+    /// UV index with a clear sky.
+    /// </summary>
+    [JsonPropertyName("uv_index_clear_sky")]
+    public List<double?> UvIndexClearSky { get; set; } = [];
 }

@@ -5,11 +5,19 @@
 }
 <p id="status" class="status">Finding Your Location…</p>
 <section id="hourly" class="card" hidden>
+    <div class="legend">
+        <span style="--key: var(--temperature)">Temperature</span>
+        <span class="key-dashed" style="--key: var(--feels-like)">Feels Like</span>
+        <span style="--key: var(--uv)">UV Index</span>
+        <span class="key-dotted" style="--key: var(--uv)">Clear Sky UV</span>
+        <span class="key-block" style="--key: rgb(var(--rain))">Rain</span>
+    </div>
     <div class="chart">
         <svg id="axis" class="axis"></svg>
         <div id="strip-scroll" class="strip-scroll">
             <svg id="strip" class="strip"></svg>
         </div>
+        <svg id="axis-uv" class="axis"></svg>
     </div>
 </section>
 @section Scripts {

@@ -135,7 +135,8 @@ public class MetOfficeProvider(HttpClient httpClient, IOptions<MetOfficeOptions>
             Humidity = hour.ScreenRelativeHumidity,
             WindSpeed = ToMph(hour.WindSpeed10m),
             WindGust = ToMph(hour.WindGustSpeed10m),
-            WindDirection = hour.WindDirectionFrom10m
+            WindDirection = hour.WindDirectionFrom10m,
+            UvIndex = hour.UvIndex
         };
     }
 
