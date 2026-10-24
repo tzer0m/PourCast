@@ -5,8 +5,13 @@ import { availableRanges, hoursInRange, columnsForRange } from "/js/range.js";
 
 const statusElement = document.getElementById("status");
 
-// Redraw the chart when the window is resized.
+// The week forecast (days and 7 Days) loads straight away; the month forecast only when 30 Days is first picked.
 let lastReport = null;
+let monthReport = null;
+let monthLoading = null;
+let lastLocation = null;
+
+// Redraw the chart when the window is resized.
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
@@ -46,6 +51,27 @@ function renderSources(sources) {
     sourcesElement.appendChild(item);
   });
   sourcesElement.hidden = false;
+}
+
+// Fetches the 30 day forecast for the current place, once.
+function loadMonth() {
+  if (!monthLoading) {
+    const location = lastLocation;
+    const { latitude, longitude } = location;
+    monthLoading = fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&range=month`).then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }).then(report => {
+      // Ignore a late response if the place has changed since.
+      if (location !== lastLocation) return;
+      monthReport = report;
+      render();
+    }).catch(error => {
+      monthLoading = null;
+      statusElement.hidden = false;
+      statusElement.textContent = `Couldn't load the 30 day forecast (${error.message}).`;
+    });
+  }
 }
 
 function render() {
@@ -96,10 +122,17 @@ function render() {
   menu.appendChild(button);
   menu.appendChild(list);
   rangesElement.appendChild(menu);
-  renderSources(lastReport.sources);
-  const hours = hoursInRange(lastReport.hourly, range);
-  renderSummary(hours, lastReport.daylight, range);
-  if (!renderChart(columnsForRange(hours, range), lastReport.daylight, range.stepHours)) {
+  const report = range.source === "Month" ? monthReport : lastReport;
+  if (!report) {
+    statusElement.hidden = false;
+    statusElement.textContent = "Loading 30 Day Forecast…";
+    loadMonth();
+    return;
+  }
+  renderSources(report.sources);
+  const hours = hoursInRange(report.hourly, range);
+  renderSummary(hours, report.daylight, range);
+  if (!renderChart(columnsForRange(hours, range), report.daylight, range.stepHours)) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
   } else {
@@ -136,6 +169,9 @@ async function load(latitude, longitude, name, detail) {
     const report = await response.json();
     statusElement.hidden = true;
     lastReport = report;
+    lastLocation = { latitude, longitude };
+    monthReport = null;
+    monthLoading = null;
     if (!name) {
       showPlace(report.locationName ?? `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`, "Current Location");
     }

@@ -73,7 +73,8 @@ export function renderChart(hours, daylight, stepHours) {
     return false;
   }
   document.getElementById("dashboard").hidden = false;
-  const layout = fitLayout(stepHours > 1 ? withDayRow(chartLayout) : chartLayout);
+  const layout = fitLayout(stepHours === 6 ? withDayRow(chartLayout) : chartLayout);
+  const daily = stepHours >= 24;
 
   // Temperature scale snapped to tidy steps.
   const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
@@ -122,12 +123,13 @@ export function renderChart(hours, daylight, stepHours) {
   };
   const nights = nightPeriods(daylight);
   const isNight = date => nights.some(([from, to]) => date >= from && date < to);
-  nights.forEach(([from, to]) => {
+  // Daily columns are a whole day each, so night shading and sun times are left out.
+  (daily ? [] : nights).forEach(([from, to]) => {
     const x1 = Math.max(0, timeX(from));
     const x2 = Math.min(width, timeX(to));
     if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.windBottom }));
   });
-  daylight.flatMap(d => [["sunrise", d.sunrise], ["sunset", d.sunset]]).filter(([, value]) => value).forEach(([kind, value]) => {
+  (daily ? [] : daylight).flatMap(d => [["sunrise", d.sunrise], ["sunset", d.sunset]]).filter(([, value]) => value).forEach(([kind, value]) => {
     const time = new Date(value);
     const x = timeX(time);
     if (x < 0 || x > width) return;
@@ -198,15 +200,16 @@ export function renderChart(hours, daylight, stepHours) {
     const time = new Date(h.time);
     const isNow = i === nowIndex;
     // Hourly views divide days at midnight; the 7 day view divides them at each 6am start.
-    const isDayStart = stepHours === 1 ? time.getHours() === 0 : time.getHours() === 6;
+    // Dividers: midnight for hourly views, each 6am for the 7 day view, and each Monday for the 30 day view.
+    const isDayStart = stepHours === 1 ? time.getHours() === 0 : daily ? time.getDay() === 1 : time.getHours() === 6;
     if (isDayStart && i > 0) {
       stripElement.appendChild(svg("line", { class: "day-divider", x1: i * columnWidth, x2: i * columnWidth, y1: 8, y2: layout.height - 8 }));
     }
     // The 7 day view has its own day row above, so its columns always show the time.
-    const label = isNow ? "Now" : stepHours === 1 && isDayStart && i > 0 ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
+    const label = daily ? (isNow ? "Today" : time.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })) : isNow ? "Now" : stepHours === 1 && isDayStart && i > 0 ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
     const icon = conditionIcons[h.condition] ?? conditionIcons.Unknown;
-    const night = isNight(new Date((time.getTime() + new Date(h.end).getTime()) / 2));
+    const night = !daily && isNight(new Date((time.getTime() + new Date(h.end).getTime()) / 2));
     const image = svg("image", { class: "condition-icon", href: `/icons/${night ? icon[1] : icon[0]}.svg`, x: centre(i) - layout.iconSize / 2, y: layout.iconY, width: layout.iconSize, height: layout.iconSize });
     image.appendChild(svg("title", {}, conditionLabels[h.condition] ?? h.condition));
     stripElement.appendChild(image);
@@ -219,7 +222,7 @@ export function renderChart(hours, daylight, stepHours) {
   });
 
   // Day names centred over each day's columns in the 7 day view, e.g. "Sat 24".
-  if (stepHours > 1) {
+  if (stepHours === 6) {
     const days = [];
     hours.forEach((h, i) => {
       const time = new Date(h.time);

@@ -1,4 +1,5 @@
-// Ranges the forecast can be viewed for: single 6am-to-6am days, or 7 days in 6 hour columns.
+// Ranges the forecast can be viewed for: single 6am-to-6am days, 7 days in 6 hour columns, or 30 days in daily columns.
+// The 30 day range uses the separate month forecast (source "Month"); the rest use the week forecast.
 const hourMs = 60 * 60 * 1000;
 
 function sixAm(daysFromToday) {
@@ -12,7 +13,7 @@ function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-// The ranges that have data, as { key, label, start, end, stepHours }.
+// The ranges that have data, as { key, label, start, end, stepHours, source }.
 export function availableRanges(hourly) {
   if (hourly.length === 0) return [];
   const last = new Date(hourly[hourly.length - 1].time);
@@ -21,9 +22,10 @@ export function availableRanges(hourly) {
     const start = sixAm(day);
     if (start > last) break;
     const label = day === 0 ? "Today" : day === 1 ? "Tomorrow" : start.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
-    ranges.push({ key: day === 0 ? "today" : dateKey(start), label, start, end: sixAm(day + 1), stepHours: 1 });
+    ranges.push({ key: day === 0 ? "today" : dateKey(start), label, start, end: sixAm(day + 1), stepHours: 1, source: "Week" });
   }
-  ranges.push({ key: "week", label: "7 Days", start: sixAm(0), end: sixAm(7), stepHours: 6 });
+  ranges.push({ key: "week", label: "7 Days", start: sixAm(0), end: sixAm(7), stepHours: 6, source: "Week" });
+  ranges.push({ key: "month", label: "30 Days", start: sixAm(0), end: sixAm(30), stepHours: 24, source: "Month" });
   return ranges;
 }
 

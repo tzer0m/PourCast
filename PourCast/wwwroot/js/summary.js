@@ -84,7 +84,7 @@ export function renderSummary(hours, daylight, range) {
   now.setMinutes(0, 0, 0);
   const nowHour = hours.find(h => new Date(h.time).getTime() === now.getTime());
   const current = nowHour ?? averageOf(hours);
-  const periodLabel = range.stepHours === 1 ? "24 Hours" : "7 Days";
+  const periodLabel = range.stepHours === 1 ? "24 Hours" : range.label;
   // Headlines show the current hour when the range includes now, otherwise the range average marked "Avg".
   const tile = (title, colour, headline, secondary, table, highlight) => summaryTile(title, colour, headline, nowHour ? secondary : ["Avg", secondary].filter(Boolean).join(" · "), table, highlight);
   const nights = nightPeriods(daylight);
@@ -97,7 +97,7 @@ export function renderSummary(hours, daylight, range) {
     return v === null || v === undefined ? "–" : `${v.toFixed(digits)}${unit}`;
   };
   const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
-  const at = date => range.stepHours === 1 ? hourLabel(date) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
+  const at = date => range.stepHours === 1 ? hourLabel(date) : range.stepHours >= 24 ? date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
 
   // Two sliders, daylight and 24 hours, on the same scale so they can be compared.
   const rangeTable = (key, format) => {
