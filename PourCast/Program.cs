@@ -62,6 +62,7 @@ builder.Services.Configure<ScoringOptions>(builder.Configuration.GetSection("Sco
 builder.Services.AddHttpClient<MetarClient>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<ScoringOptions>>().Value.MetarBaseUrl));
 builder.Services.AddHostedService<ObservationService>();
 builder.Services.AddHostedService<SnapshotService>();
+builder.Services.AddScoped<ScoringService>();
 
 // Create the web application, bring the database up to date and configure.
 WebApplication app = builder.Build();
