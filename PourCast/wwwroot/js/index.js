@@ -1,6 +1,7 @@
 import { renderChart } from "/js/chart.js";
 import { renderSummary } from "/js/summary.js";
 import { initSearch } from "/js/search.js";
+import { availableRanges, hoursInRange, columnsForRange } from "/js/range.js";
 
 const statusElement = document.getElementById("status");
 
@@ -9,8 +10,41 @@ let lastReport = null;
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (lastReport) renderChart(lastReport.hourly, lastReport.daylight); }, 150);
+  resizeTimer = setTimeout(() => { if (lastReport) render(); }, 150);
 });
+
+// Range chips: Today, Tomorrow, the next few days and 7 Days. The selected range is kept in the URL.
+const rangesElement = document.getElementById("ranges");
+let selectedRange = new URL(window.location.href).searchParams.get("range") ?? "today";
+
+function render() {
+  const ranges = availableRanges(lastReport.hourly);
+  const range = ranges.find(r => r.key === selectedRange) ?? ranges[0];
+  selectedRange = range.key;
+  rangesElement.replaceChildren();
+  ranges.forEach(r => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = r.key === range.key ? "range-chip range-chip-selected" : "range-chip";
+    chip.textContent = r.label;
+    chip.addEventListener("click", () => {
+      selectedRange = r.key;
+      const url = new URL(window.location.href);
+      if (r.key === "today") url.searchParams.delete("range"); else url.searchParams.set("range", r.key);
+      history.replaceState(null, "", url);
+      render();
+    });
+    rangesElement.appendChild(chip);
+  });
+  const hours = hoursInRange(lastReport.hourly, range);
+  renderSummary(hours, lastReport.daylight, range);
+  if (!renderChart(columnsForRange(hours, range), lastReport.daylight, range.stepHours)) {
+    statusElement.hidden = false;
+    statusElement.textContent = "No forecast data available for this range.";
+  } else {
+    statusElement.hidden = true;
+  }
+}
 
 // Current place, kept in the URL so it can be bookmarked.
 const placeNameElement = document.getElementById("place-name");
@@ -46,11 +80,7 @@ async function load(latitude, longitude, name, detail) {
     }
     savePlace({ latitude, longitude, name: placeNameElement.textContent, detail: placeDetailElement.textContent });
     document.getElementById("dashboard").hidden = false;
-    renderSummary(report.hourly, report.daylight);
-    if (!renderChart(report.hourly, report.daylight)) {
-      statusElement.hidden = false;
-      statusElement.textContent = "No hourly data available for today.";
-    }
+    render();
   } catch (error) {
     statusElement.hidden = false;
     statusElement.textContent = `Couldn't load the forecast (${error.message}).`;

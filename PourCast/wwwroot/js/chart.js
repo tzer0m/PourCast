@@ -1,5 +1,5 @@
 import { conditionIcons, conditionLabels } from "/js/conditions.js";
-import { svg, compass, hourLabel, clockTime, windowHours, niceStep, ticks, linearPath, smoothPath, nightPeriods } from "/js/helpers.js";
+import { svg, compass, hourLabel, clockTime, niceStep, ticks, linearPath, smoothPath, nightPeriods } from "/js/helpers.js";
 
 const axisElement = document.getElementById("axis");
 const stripElement = document.getElementById("strip");
@@ -53,9 +53,8 @@ function fitLayout() {
   return scaled;
 }
 
-// Draws the 24 hour chart. Returns false if there is no data for the window.
-export function renderChart(hourly, daylight) {
-  const hours = windowHours(hourly);
+// Draws the chart for a set of columns, each stepHours long. Returns false if there are no columns.
+export function renderChart(hours, daylight, stepHours) {
   if (hours.length === 0) {
     return false;
   }
@@ -85,7 +84,6 @@ export function renderChart(hourly, daylight) {
   const width = hours.length * columnWidth;
   const centre = i => i * columnWidth + columnWidth / 2;
   const now = new Date();
-  now.setMinutes(0, 0, 0);
 
   stripElement.replaceChildren();
   axisElement.replaceChildren();
@@ -95,7 +93,8 @@ export function renderChart(hourly, daylight) {
 
   // Night shading and sunrise/sunset markers.
   const start = new Date(hours[0].time).getTime();
-  const timeX = date => (date.getTime() - start) / (60 * 60 * 1000) * columnWidth;
+  const stepMs = stepHours * 60 * 60 * 1000;
+  const timeX = date => (date.getTime() - start) / stepMs * columnWidth;
   const nights = nightPeriods(daylight);
   const isNight = date => nights.some(([from, to]) => date >= from && date < to);
   nights.forEach(([from, to]) => {
@@ -114,7 +113,7 @@ export function renderChart(hourly, daylight) {
   });
 
   // Current hour highlight.
-  const nowIndex = hours.findIndex(h => new Date(h.time).getTime() === now.getTime());
+  const nowIndex = hours.findIndex(h => new Date(h.time) <= now && now < new Date(new Date(h.time).getTime() + stepMs));
   if (nowIndex >= 0) {
     stripElement.appendChild(svg("rect", { class: "now-column", x: nowIndex * columnWidth + 3, y: 4, width: columnWidth - 6, height: layout.height - 8, rx: 12 }));
   }
@@ -173,14 +172,15 @@ export function renderChart(hourly, daylight) {
   hours.forEach((h, i) => {
     const time = new Date(h.time);
     const isNow = i === nowIndex;
-    const isMidnight = time.getHours() === 0;
-    if (isMidnight) {
+    // Hourly views divide days at midnight; the 7 day view divides them at each 6am start.
+    const isDayStart = stepHours === 1 ? time.getHours() === 0 : time.getHours() === 6;
+    if (isDayStart && i > 0) {
       stripElement.appendChild(svg("line", { class: "day-divider", x1: i * columnWidth, x2: i * columnWidth, y1: 8, y2: layout.height - 8 }));
     }
-    const label = isNow ? "Now" : isMidnight ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
+    const label = isNow ? "Now" : isDayStart && (stepHours > 1 || i > 0) ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
     const icon = conditionIcons[h.condition] ?? conditionIcons.Unknown;
-    const night = isNight(new Date(time.getTime() + 30 * 60 * 1000));
+    const night = isNight(new Date(time.getTime() + stepMs / 2));
     const image = svg("image", { class: "condition-icon", href: `/icons/${night ? icon[1] : icon[0]}.svg`, x: centre(i) - layout.iconSize / 2, y: layout.iconY, width: layout.iconSize, height: layout.iconSize });
     image.appendChild(svg("title", {}, conditionLabels[h.condition] ?? h.condition));
     stripElement.appendChild(image);
@@ -299,8 +299,6 @@ export function renderChart(hourly, daylight) {
     }
   });
 
-  if (nowIndex >= 0) {
-    scroll.scrollLeft = nowIndex * columnWidth;
-  }
+  scroll.scrollLeft = nowIndex >= 0 ? nowIndex * columnWidth : 0;
   return true;
 }

@@ -28,16 +28,6 @@ export function clockTime(date) {
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function windowHours(hourly) {
-  const start = new Date();
-  start.setHours(6, 0, 0, 0);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return hourly.filter(h => {
-    const time = new Date(h.time);
-    return time >= start && time < end && h.temperatureAverage !== null;
-  });
-}
-
 // A tidy step (1, 2, 2.5 or 5 times a power of ten) giving roughly the target number of ticks.
 export function niceStep(span, target) {
   const raw = span / target;

@@ -156,6 +156,39 @@ body {
   padding: 0.45rem 0.6rem;
 }
 
+.ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.range-chip {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--grid-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.range-chip:hover {
+  color: var(--text);
+}
+
+.range-chip-selected {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.range-chip-selected:hover {
+  color: var(--surface);
+}
+
 .status {
   color: var(--muted);
 }

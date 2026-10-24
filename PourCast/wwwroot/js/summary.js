@@ -1,4 +1,4 @@
-import { element, compass, hourLabel, windowHours, nightPeriods } from "/js/helpers.js";
+import { element, compass, hourLabel, nightPeriods } from "/js/helpers.js";
 
 // Daily summary tiles: current value, highlights, and daylight vs 24 hour sliders.
 function periodStats(period, key) {
@@ -64,14 +64,29 @@ function summaryTile(title, colour, headline, secondary, table, highlight) {
   return tile;
 }
 
-export function renderSummary(hourly, daylight) {
-  const hours = windowHours(hourly);
+// Average of every metric across the hours, used as the headline when the range doesn't include now.
+function averageOf(hours) {
+  const result = {};
+  Object.keys(hours[0]).filter(key => key.endsWith("Average")).forEach(key => {
+    const list = hours.map(h => h[key]).filter(v => v !== null && v !== undefined);
+    result[key] = list.length ? list.reduce((sum, v) => sum + v, 0) / list.length : null;
+  });
+  result.windDirectionAverage = null;
+  return result;
+}
+
+// Summarises the hours in a range. Shows the current hour's values if the range includes now, otherwise the range average.
+export function renderSummary(hours, daylight, range) {
   const container = document.getElementById("summary");
   container.replaceChildren();
   if (hours.length === 0) return;
   const now = new Date();
   now.setMinutes(0, 0, 0);
-  const current = hours.find(h => new Date(h.time).getTime() === now.getTime()) ?? {};
+  const nowHour = hours.find(h => new Date(h.time).getTime() === now.getTime());
+  const current = nowHour ?? averageOf(hours);
+  const periodLabel = range.stepHours === 1 ? "24 Hours" : "7 Days";
+  // Headlines show the current hour when the range includes now, otherwise the range average marked "Avg".
+  const tile = (title, colour, headline, secondary, table, highlight) => summaryTile(title, colour, headline, nowHour ? secondary : ["Avg", secondary].filter(Boolean).join(" · "), table, highlight);
   const nights = nightPeriods(daylight);
   const dayHours = hours.filter(h => {
     const middle = new Date(new Date(h.time).getTime() + 30 * 60 * 1000);
@@ -82,16 +97,16 @@ export function renderSummary(hourly, daylight) {
     return v === null || v === undefined ? "–" : `${v.toFixed(digits)}${unit}`;
   };
   const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
-  const at = date => hourLabel(date);
+  const at = date => range.stepHours === 1 ? hourLabel(date) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
 
   // Two sliders, daylight and 24 hours, on the same scale so they can be compared.
   const rangeTable = (key, format) => {
     const all = periodStats(hours, key);
     const span = all.max - all.min || 1;
     const position = v => (v - all.min) / span * 100;
-    const nowValue = current[`${key}Average`];
+    const nowValue = nowHour ? nowHour[`${key}Average`] : null;
     const container = element("div", "sliders");
-    [["Daylight", dayHours], ["24 Hours", hours]].forEach(([label, period]) => {
+    [["Daylight", dayHours], [periodLabel, hours]].forEach(([label, period]) => {
       const stats = periodStats(period, key);
       container.appendChild(element("span", "slider-label", label));
       container.appendChild(element("span", "slider-end", stats ? format(stats.min) : "–"));
@@ -122,26 +137,26 @@ export function renderSummary(hourly, daylight) {
   const temperature = periodStats(hours, "temperature");
   if (temperature) {
     const degrees = formatter(0, "°");
-    container.appendChild(summaryTile("Temperature", "var(--temperature)", value("temperature", 0, "°"), "", rangeTable("temperature", degrees), [[`↑${degrees(temperature.max)}`, at(temperature.peakTime), "Warmest"], [`↓${degrees(temperature.min)}`, at(temperature.lowTime), "Coldest"]]));
+    container.appendChild(tile("Temperature", "var(--temperature)", value("temperature", 0, "°"), "", rangeTable("temperature", degrees), [[`↑${degrees(temperature.max)}`, at(temperature.peakTime), "Warmest"], [`↓${degrees(temperature.min)}`, at(temperature.lowTime), "Coldest"]]));
   }
 
   // Feels like.
   const feelsLike = periodStats(hours, "feelsLike");
   if (feelsLike) {
     const degrees = formatter(0, "°");
-    container.appendChild(summaryTile("Feels Like", "var(--feels-like)", value("feelsLike", 0, "°"), "", rangeTable("feelsLike", degrees), [[`↑${degrees(feelsLike.max)}`, at(feelsLike.peakTime), "Warmest"], [`↓${degrees(feelsLike.min)}`, at(feelsLike.lowTime), "Coldest"]]));
+    container.appendChild(tile("Feels Like", "var(--feels-like)", value("feelsLike", 0, "°"), "", rangeTable("feelsLike", degrees), [[`↑${degrees(feelsLike.max)}`, at(feelsLike.peakTime), "Warmest"], [`↓${degrees(feelsLike.min)}`, at(feelsLike.lowTime), "Coldest"]]));
   }
 
   // Rain: total, wettest hour and highest chance.
   const rain = periodStats(hours, "precipitation");
   if (rain) {
     const mm = formatter(1, " mm");
-    const table = statsTable(["Total", "Wettest", "Chance"], [["Daylight", dayHours], ["24 Hours", hours]].map(([label, period]) => {
+    const table = statsTable(["Total", "Wettest", "Chance"], [["Daylight", dayHours], [periodLabel, hours]].map(([label, period]) => {
       const amount = periodStats(period, "precipitation");
       const chance = periodStats(period, "precipitationProbability");
       return [label, [amount ? mm(amount.total) : "–", amount ? mm(amount.max) : "–", chance ? `${Math.round(chance.max)}%` : "–"]];
     }));
-    container.appendChild(summaryTile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, [rain.max > 0 ? [`↑${mm(rain.max)}`, at(rain.peakTime), "Wettest Hour"] : ["Dry", "", "No Rain Expected"]]));
+    container.appendChild(tile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, [rain.max > 0 ? [`↑${mm(rain.max)}`, at(rain.peakTime), "Wettest Hour"] : ["Dry", "", "No Rain Expected"]]));
   }
 
   // UV.
@@ -149,13 +164,13 @@ export function renderSummary(hourly, daylight) {
   const uvClearSky = periodStats(hours, "uvIndexClearSky");
   if (uv) {
     const index = formatter(1, "");
-    container.appendChild(summaryTile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), [[`↑${index(uv.max)}`, at(uv.peakTime), uvClearSky ? `Peak (Clear Sky ${index(uvClearSky.max)})` : "Peak"]]));
+    container.appendChild(tile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), [[`↑${index(uv.max)}`, at(uv.peakTime), uvClearSky ? `Peak (Clear Sky ${index(uvClearSky.max)})` : "Peak"]]));
   }
 
   // Humidity.
   const humidity = periodStats(hours, "humidity");
   if (humidity) {
-    container.appendChild(summaryTile("Humidity", "var(--humidity)", value("humidity", 0, "%"), "", rangeTable("humidity", formatter(0, "%")), [[`↑${Math.round(humidity.max)}%`, at(humidity.peakTime), "Most Humid"]]));
+    container.appendChild(tile("Humidity", "var(--humidity)", value("humidity", 0, "%"), "", rangeTable("humidity", formatter(0, "%")), [[`↑${Math.round(humidity.max)}%`, at(humidity.peakTime), "Most Humid"]]));
   }
 
   // Wind.
@@ -164,6 +179,6 @@ export function renderSummary(hourly, daylight) {
   if (wind) {
     const mph = formatter(0, " mph");
     const direction = current.windDirectionAverage === null || current.windDirectionAverage === undefined ? "" : ` from ${compass(current.windDirectionAverage)}`;
-    container.appendChild(summaryTile("Wind", "var(--wind)", value("windSpeed", 0, " mph"), `Gusts ${value("windGust", 0, " mph")}${direction}`, rangeTable("windSpeed", mph), [[`↑${mph(wind.max)}`, at(wind.peakTime), "Strongest Wind"], gust ? [`↑G ${mph(gust.max)}`, at(gust.peakTime), "Strongest Gust"] : null]));
+    container.appendChild(tile("Wind", "var(--wind)", value("windSpeed", 0, " mph"), `Gusts ${value("windGust", 0, " mph")}${direction}`, rangeTable("windSpeed", mph), [[`↑${mph(wind.max)}`, at(wind.peakTime), "Strongest Wind"], gust ? [`↑G ${mph(gust.max)}`, at(gust.peakTime), "Strongest Gust"] : null]));
   }
 }
