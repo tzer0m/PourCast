@@ -20,7 +20,7 @@ public static class ForecastCombiner
         List<DateTimeOffset> starts = windows.Select(x => x.Start).ToList();
 
         // Each series is one source, or one member of an ensemble, with its hours bucketed by column.
-        List<Dictionary<int, List<HourlyForecast>>> series = forecasts.SelectMany(x => x.Hourly.GroupBy(h => h.Member ?? string.Empty)).Select(x => Bucket(x, windows, starts)).ToList();
+        List<Dictionary<int, List<HourlyForecast>>> series = forecasts.SelectMany(x => x.Hourly.GroupBy(h => h.Member ?? string.Empty)).Select(x => Bucket(options.CalculateFeelsLike ? x.Select(h => WithCalculatedFeelsLike(h, options)) : x, windows, starts)).ToList();
         List<HourlySummary> result = [];
         for (int i = 0; i < windows.Count; i++)
         {
@@ -31,6 +31,18 @@ public static class ForecastCombiner
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Returns a copy of the hour with feels like calculated from its own temperature, wind and humidity.
+    /// </summary>
+    /// <param name="hour">The source's hour.</param>
+    /// <param name="options">The feels like settings.</param>
+    private static HourlyForecast WithCalculatedFeelsLike(HourlyForecast hour, CombiningOptions options)
+    {
+        HourlyForecast copy = hour.Copy();
+        copy.FeelsLike = FeelsLikeCalculator.Calculate(hour.Temperature, hour.WindSpeed, hour.Humidity, options);
+        return copy;
     }
 
     /// <summary>

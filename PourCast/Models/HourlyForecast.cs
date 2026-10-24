@@ -74,4 +74,12 @@ public class HourlyForecast
     /// UV index with a clear sky.
     /// </summary>
     public double? UvIndexClearSky { get; set; }
+
+    /// <summary>
+    /// Returns a shallow copy, so values can be adjusted without changing a cached forecast.
+    /// </summary>
+    public HourlyForecast Copy()
+    {
+        return (HourlyForecast)MemberwiseClone();
+    }
 }
