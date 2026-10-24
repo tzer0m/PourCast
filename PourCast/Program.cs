@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PourCast.Providers;
+using PourCast.Providers.MetNorway;
 using PourCast.Providers.MetOffice;
 using PourCast.Providers.OpenMeteo;
 using PourCast.Providers.OpenMeteoEnsemble;
@@ -25,6 +26,8 @@ AddOpenMeteo("OpenMeteoEcmwf");
 AddOpenMeteo("OpenMeteoIcon");
 AddOpenMeteo("OpenMeteoGfs");
 AddOpenMeteo("OpenMeteoMeteoFrance");
+builder.Services.Configure<MetNorwayOptions>(builder.Configuration.GetSection("Providers:MetNorway"));
+builder.Services.AddHttpClient<IWeatherProvider, MetNorwayProvider>("MetNorway", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetNorwayOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetNorwayOptions>>().Value));
 builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
 builder.Services.AddTransient<WeatherService>();
