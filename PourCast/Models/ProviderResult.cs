@@ -47,4 +47,9 @@ public class ProviderResult
     /// The error message, if the request failed.
     /// </summary>
     public string? Error { get; set; }
+
+    /// <summary>
+    /// The source's overall accuracy score from 0 to 100, or null while there isn't enough data.
+    /// </summary>
+    public double? Score { get; set; }
 }

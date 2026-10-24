@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PourCast.Models;
+using PourCast.Scoring;
 using PourCast.Services;
 using PourCast.Services.Geocoding;
 
@@ -11,7 +12,9 @@ namespace PourCast.Pages;
 /// </summary>
 /// <param name="weatherService">The weather service.</param>
 /// <param name="geocodingService">The place search service.</param>
-public class IndexModel(WeatherService weatherService, GeocodingService geocodingService) : PageModel
+/// <param name="scoringService">The accuracy scoring service, for each source's score.</param>
+/// <param name="logger">The logger.</param>
+public class IndexModel(WeatherService weatherService, GeocodingService geocodingService, ScoringService scoringService, ILogger<IndexModel> logger) : PageModel
 {
     /// <summary>
     /// Handles GET requests for the home page.
@@ -32,6 +35,20 @@ public class IndexModel(WeatherService weatherService, GeocodingService geocodin
     {
         TimeZoneInfo zone = !string.IsNullOrWhiteSpace(timeZone) && TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out TimeZoneInfo? found) ? found! : TimeZoneInfo.Utc;
         WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, range, zone, cancellationToken);
+
+        // Scores are extra, so the forecast is still returned if the scoring database can't be reached.
+        try
+        {
+            Dictionary<string, double?> scores = (await scoringService.GetScoresAsync(cancellationToken)).ToDictionary(x => x.Source, x => x.Overall);
+            foreach (ProviderResult source in report.Sources)
+            {
+                source.Score = scores.GetValueOrDefault(source.Source);
+            }
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(exception, "Couldn't get accuracy scores");
+        }
         return new JsonResult(report);
     }
 

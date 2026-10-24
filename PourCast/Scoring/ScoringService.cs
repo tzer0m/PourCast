@@ -30,6 +30,16 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
     }
 
     /// <summary>
+    /// Counts the observed hours in the scoring window.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    public async Task<int> GetObservedHoursAsync(CancellationToken cancellationToken)
+    {
+        DateTimeOffset start = DateTimeOffset.UtcNow.AddDays(-options.Value.WindowDays);
+        return await db.Observations.CountAsync(x => x.Station == options.Value.Station && x.Time >= start, cancellationToken);
+    }
+
+    /// <summary>
     /// Pairs every prediction in the scoring window with the observation for the same hour.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>

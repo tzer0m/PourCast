@@ -280,11 +280,21 @@ body {
 }
 
 .sources-title {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--grid-strong);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 0.7rem;
+  text-decoration: none;
+}
+
+.sources-title:hover {
+  color: var(--text);
+  border-color: var(--divider);
 }
 
 .source {
@@ -922,4 +932,102 @@ body {
   .tile-main {
     margin-bottom: 0;
   }
+}
+
+/* Forecast accuracy page. */
+a.place {
+  color: inherit;
+  text-decoration: none;
+}
+
+.scores-scroll {
+  overflow-x: auto;
+}
+
+.scores {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.scores th,
+.scores td {
+  padding: 0.45rem 0.6rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.scores thead th {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--grid-strong);
+}
+
+/* Source names stay in view while the days scroll sideways. */
+.scores .scores-source {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+}
+
+.scores-group + .scores-group .scores-row > * {
+  border-top: 1px solid var(--grid);
+}
+
+.scores-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scores-toggle::before {
+  content: "▸";
+  display: inline-block;
+  width: 1rem;
+  color: var(--muted);
+}
+
+.scores-toggle[aria-expanded="true"]::before {
+  content: "▾";
+}
+
+.scores-metric {
+  padding-left: 1.6rem !important;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* Shaded from red at 0 to green at 100. */
+.score {
+  background: hsl(calc(var(--score, 0) * 1.2) 70% 50% / 0.22);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-overall {
+  font-weight: 700;
+}
+
+.score-detail {
+  font-size: 0.8rem;
+}
+
+.score-empty,
+.score-plain {
+  background: none;
+  color: var(--muted);
+}
+
+.scores-note {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
 }

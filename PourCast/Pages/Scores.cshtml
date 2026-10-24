@@ -1,0 +1,99 @@
+@page
+@model ScoresModel
+@using PourCast.Scoring.Models
+@{
+    ViewData["Title"] = "Forecast Accuracy";
+    int days = Model.Settings.SnapshotDays;
+}
+<header class="topbar">
+    <a class="place" href="/">
+        <img class="place-logo" src="~/app-icons/icon-192.png" alt="PourCast" width="36" height="36" />
+        <h1 class="place-name">Forecast Accuracy</h1>
+        <span class="place-detail">@Model.Settings.Name (@Model.Settings.Station) · Last @Model.Settings.WindowDays Days · @Model.ObservedHours Observed Hours</span>
+    </a>
+</header>
+<section class="card scores-card">
+    @if (Model.Scores.Count == 0)
+    {
+        <p class="status">Collecting forecasts and observations. Scores appear once a day of forecasts can be checked.</p>
+    }
+    else
+    {
+        <div class="scores-scroll">
+            <table class="scores">
+                <thead>
+                    <tr>
+                        <th class="scores-source">Source</th>
+                        <th>Overall</th>
+                        @for (int day = 1; day <= days; day++)
+                        {
+                            <th>Day @day</th>
+                        }
+                    </tr>
+                </thead>
+                @foreach (SourceScore source in Model.Scores)
+                {
+                    <tbody class="scores-group">
+                        <tr class="scores-row">
+                            <th class="scores-source">
+                                <button type="button" class="scores-toggle" aria-expanded="false">@source.Source</button>
+                            </th>
+                            @if (source.Overall is double overall)
+                            {
+                                <td class="score score-overall" style="--score: @overall.ToString("0")">@overall.ToString("0")</td>
+                            }
+                            else
+                            {
+                                <td class="score score-empty">Collecting</td>
+                            }
+                            @for (int day = 1; day <= days; day++)
+                            {
+                                DayScore? dayScore = source.Days.FirstOrDefault(x => x.Day == day);
+                                if (dayScore is null)
+                                {
+                                    <td class="score score-empty">–</td>
+                                }
+                                else
+                                {
+                                    <td class="score" style="--score: @dayScore.Overall.ToString("0")" title="@dayScore.Matches Hours Compared">@dayScore.Overall.ToString("0")</td>
+                                }
+                            }
+                        </tr>
+                        @foreach (ScoreMetric metric in Model.Metrics)
+                        {
+                            <tr class="scores-detail" hidden>
+                                <th class="scores-source scores-metric">@ScoresModel.MetricName(metric)</th>
+                                <td></td>
+                                @for (int day = 1; day <= days; day++)
+                                {
+                                    MetricScore? metricScore = source.Days.FirstOrDefault(x => x.Day == day)?.Metrics.GetValueOrDefault(metric);
+                                    if (metricScore is null)
+                                    {
+                                        <td class="score score-empty">–</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="score score-detail" style="--score: @metricScore.Score.ToString("0")" title="Score @metricScore.Score.ToString("0") · @metricScore.Matches Hours">@ScoresModel.FormatError(metric, metricScore.Error)</td>
+                                    }
+                                }
+                            </tr>
+                        }
+                        <tr class="scores-detail" hidden>
+                            <th class="scores-source scores-metric">Rain Hit Rate</th>
+                            <td></td>
+                            @for (int day = 1; day <= days; day++)
+                            {
+                                double? hitRate = source.Days.FirstOrDefault(x => x.Day == day)?.RainHitRate;
+                                <td class="score score-plain">@(hitRate is double rate ? $"{rate:0}%" : "–")</td>
+                            }
+                        </tr>
+                    </tbody>
+                }
+            </table>
+        </div>
+        <p class="scores-note">Scores run from 0 to 100, averaged across metrics. Day 1 is the first 24 hours after a forecast was recorded. Select a source to see each metric's average error; rain shows the Brier score, where lower is better.</p>
+    }
+</section>
+@section Scripts {
+    <script type="module" src="~/js/scores.js" asp-append-version="true"></script>
+}

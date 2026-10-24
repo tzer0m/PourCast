@@ -129,7 +129,8 @@ const rangeNames = { Week: "Days and 7 Days", Month: "30 Days" };
 
 function renderSources(sources) {
   sourcesElement.replaceChildren();
-  sourcesElement.appendChild(Object.assign(document.createElement("span"), { className: "sources-title", textContent: "Sources" }));
+  // The title links to the accuracy scores.
+  sourcesElement.appendChild(Object.assign(document.createElement("a"), { className: "sources-title", href: "/scores", textContent: "Sources", title: "Forecast Accuracy" }));
   sources.forEach(source => {
     const item = document.createElement("span");
     item.className = `source source-${source.status === "Used" ? "used" : source.status === "Failed" || source.status === "LimitReached" || source.status === "RateLimited" ? "failed" : "not-used"}`;
@@ -148,7 +149,8 @@ function renderSources(sources) {
     const excluded = Object.entries(source.exclusions ?? {}).sort((a, b) => b[1] - a[1]);
     const total = excluded.reduce((sum, [, count]) => sum + count, 0);
     const exclusionText = total > 0 ? `\nExcluded ${total} values: ${excluded.map(([metric, count]) => `${metricNames[metric] ?? metric} ${count}`).join(", ")}` : "";
-    item.title = `${state}\n${usage}${exclusionText}`;
+    const scoreText = source.score !== null && source.score !== undefined ? `\nAccuracy Score ${Math.round(source.score)}` : "";
+    item.title = `${state}\n${usage}${scoreText}${exclusionText}`;
     sourcesElement.appendChild(item);
   });
   sourcesElement.hidden = false;
