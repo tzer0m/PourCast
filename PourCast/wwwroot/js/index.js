@@ -8,19 +8,20 @@ const layout = {
   minimumColumnWidth: 56,
   axisWidth: 24,
   minimumUvScale: 4,
-  height: 514,
+  height: 532,
   timeY: 22,
   iconY: 30,
   iconSize: 36,
   temperatureLabelY: 90,
   feelsLikeLabelY: 110,
-  sunY: 132,
-  temperatureTop: 150,
-  temperatureBottom: 280,
-  uvTop: 314,
-  uvBottom: 382,
-  rainTop: 416,
-  rainBottom: 490,
+  windLabelY: 128,
+  sunY: 150,
+  temperatureTop: 168,
+  temperatureBottom: 298,
+  uvTop: 332,
+  uvBottom: 400,
+  rainTop: 434,
+  rainBottom: 508,
   minimumRainScale: 2
 };
 
@@ -227,6 +228,9 @@ function renderStrip(hourly, daylight) {
     stripElement.appendChild(svg("text", { class: "temperature-label", x: centre(i), y: layout.temperatureLabelY }, `${Math.round(h.temperatureAverage)}°`));
     if (h.feelsLikeAverage !== null) {
       stripElement.appendChild(svg("text", { class: "feels-like-value", x: centre(i), y: layout.feelsLikeLabelY }, `${Math.round(h.feelsLikeAverage)}°`));
+    }
+    if (h.windSpeedAverage !== null) {
+      stripElement.appendChild(svg("text", { class: "wind-value", x: centre(i), y: layout.windLabelY }, `${Math.round(h.windSpeedAverage)} mph`));
     }
 
     const rain = h.precipitationAverage ?? 0;

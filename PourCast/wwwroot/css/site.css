@@ -221,6 +221,12 @@ body {
   background: var(--key);
 }
 
+.wind-value {
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: middle;
+}
+
 .temperature-point {
   fill: var(--surface);
   stroke: var(--temperature);

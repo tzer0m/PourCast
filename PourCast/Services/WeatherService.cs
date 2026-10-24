@@ -56,6 +56,7 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         List<double> feelsLike = hour.Where(x => x.FeelsLike is not null).Select(x => x.FeelsLike!.Value).ToList();
         List<double> uvIndex = hour.Where(x => x.UvIndex is not null).Select(x => x.UvIndex!.Value).ToList();
         List<double> uvIndexClearSky = hour.Where(x => x.UvIndexClearSky is not null).Select(x => x.UvIndexClearSky!.Value).ToList();
+        List<double> windSpeed = hour.Where(x => x.WindSpeed is not null).Select(x => x.WindSpeed!.Value).ToList();
         List<double> precipitation = hour.Where(x => x.Precipitation is not null).Select(x => x.Precipitation!.Value).ToList();
         List<double> probabilities = hour.Where(x => x.PrecipitationProbability is not null).Select(x => x.PrecipitationProbability!.Value).ToList();
         return new HourlySummary
@@ -69,6 +70,7 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
             FeelsLikeAverage = feelsLike.Count > 0 ? feelsLike.Average() : null,
             UvIndexAverage = uvIndex.Count > 0 ? uvIndex.Average() : null,
             UvIndexClearSkyAverage = uvIndexClearSky.Count > 0 ? uvIndexClearSky.Average() : null,
+            WindSpeedAverage = windSpeed.Count > 0 ? windSpeed.Average() : null,
             PrecipitationAverage = precipitation.Count > 0 ? precipitation.Average() : null,
             PrecipitationProbabilityAverage = probabilities.Count > 0 ? probabilities.Average() : null
         };

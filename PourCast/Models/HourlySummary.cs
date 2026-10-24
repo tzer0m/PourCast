@@ -41,6 +41,11 @@ public class HourlySummary
     public double? FeelsLikeAverage { get; set; }
 
     /// <summary>
+    /// Average wind speed across sources in mph.
+    /// </summary>
+    public double? WindSpeedAverage { get; set; }
+
+    /// <summary>
     /// Average UV index across sources.
     /// </summary>
     public double? UvIndexAverage { get; set; }
