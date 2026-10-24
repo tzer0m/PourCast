@@ -29,37 +29,37 @@ builder.Services.AddMemoryCache();
 builder.Services.Configure<UsageOptions>(builder.Configuration.GetSection("Usage"));
 builder.Services.AddSingleton<UsageTracker>();
 builder.Services.Configure<MetOfficeOptions>(builder.Configuration.GetSection("Providers:MetOffice"));
-builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetOfficeOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetOfficeOptions>>().Value));
 AddOpenMeteo("OpenMeteoUkmo");
 AddOpenMeteo("OpenMeteoEcmwf");
 AddOpenMeteo("OpenMeteoIcon");
 AddOpenMeteo("OpenMeteoGfs");
 AddOpenMeteo("OpenMeteoMeteoFrance");
 builder.Services.Configure<MetNorwayOptions>(builder.Configuration.GetSection("Providers:MetNorway"));
-builder.Services.AddHttpClient<IWeatherProvider, MetNorwayProvider>("MetNorway", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetNorwayOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetNorwayOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, MetNorwayProvider>("MetNorway", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetNorwayOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetNorwayOptions>>().Value));
 builder.Services.Configure<PirateWeatherOptions>(builder.Configuration.GetSection("Providers:PirateWeather"));
-builder.Services.AddHttpClient<IWeatherProvider, PirateWeatherProvider>("PirateWeather", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<PirateWeatherOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<PirateWeatherOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, PirateWeatherProvider>("PirateWeather", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<PirateWeatherOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<PirateWeatherOptions>>().Value));
 builder.Services.Configure<TomorrowIoOptions>(builder.Configuration.GetSection("Providers:TomorrowIo"));
-builder.Services.AddHttpClient<IWeatherProvider, TomorrowIoProvider>("TomorrowIo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, TomorrowIoProvider>("TomorrowIo", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value));
 builder.Services.Configure<WeatherApiOptions>(builder.Configuration.GetSection("Providers:WeatherApi"));
-builder.Services.AddHttpClient<IWeatherProvider, WeatherApiProvider>("WeatherApi", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<WeatherApiOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<WeatherApiOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, WeatherApiProvider>("WeatherApi", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<WeatherApiOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<WeatherApiOptions>>().Value));
 builder.Services.Configure<VisualCrossingOptions>(builder.Configuration.GetSection("Providers:VisualCrossing"));
-builder.Services.AddHttpClient<IWeatherProvider, VisualCrossingProvider>("VisualCrossing", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, VisualCrossingProvider>("VisualCrossing", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value));
 builder.Services.Configure<OpenWeatherMapOptions>(builder.Configuration.GetSection("Providers:OpenWeatherMap"));
-builder.Services.AddHttpClient<IWeatherProvider, OpenWeatherMapProvider>("OpenWeatherMap", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, OpenWeatherMapProvider>("OpenWeatherMap", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value));
 builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
-builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
+builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
 builder.Services.Configure<CombiningOptions>(builder.Configuration.GetSection("Combining"));
 builder.Services.AddTransient<WeatherService>();
 
 // Register place search.
 builder.Services.Configure<GeocodingOptions>(builder.Configuration.GetSection("Geocoding"));
-builder.Services.AddHttpClient<GeocodingService>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<GeocodingOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => new UsageHandler(services.GetRequiredService<UsageTracker>(), services.GetRequiredService<IOptions<GeocodingOptions>>().Value.UsageKey, services.GetRequiredService<IOptions<GeocodingOptions>>().Value.DailyLimit));
+builder.Services.AddHttpClient<GeocodingService>((services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<GeocodingOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => new UsageHandler(services.GetRequiredService<UsageTracker>(), services.GetRequiredService<IOptions<GeocodingOptions>>().Value.UsageKey, services.GetRequiredService<IOptions<GeocodingOptions>>().Value.DailyLimit));
 
 // Register the scoring database, where forecasts and observations are recorded.
 builder.Services.AddDbContext<ScoringDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("PourCast")));
 builder.Services.Configure<ScoringOptions>(builder.Configuration.GetSection("Scoring"));
-builder.Services.AddHttpClient<MetarClient>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<ScoringOptions>>().Value.MetarBaseUrl));
+builder.Services.AddHttpClient<MetarClient>((services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<ScoringOptions>>().Value.MetarBaseUrl));
 builder.Services.AddHostedService<ObservationService>();
 builder.Services.AddHostedService<SnapshotService>();
 builder.Services.AddScoped<ScoringService>();
@@ -84,7 +84,7 @@ app.Run();
 void AddOpenMeteo(string section)
 {
     OpenMeteoOptions options = builder.Configuration.GetSection($"Providers:{section}").Get<OpenMeteoOptions>() ?? new OpenMeteoOptions();
-    builder.Services.AddHttpClient(section, (HttpClient client) => client.BaseAddress = new Uri(options.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, options)).AddTypedClient<IWeatherProvider>((HttpClient client, IServiceProvider services) => new OpenMeteoProvider(client, Options.Create(options), services.GetRequiredService<IMemoryCache>()));
+    builder.Services.AddHttpClient(section, client => client.BaseAddress = new Uri(options.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, options)).AddTypedClient<IWeatherProvider>((client, services) => new OpenMeteoProvider(client, Options.Create(options), services.GetRequiredService<IMemoryCache>()));
 }
 
 // Creates the usage handler for a provider's HTTP client from its options.

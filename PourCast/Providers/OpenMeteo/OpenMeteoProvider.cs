@@ -43,7 +43,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     public async Task<Forecast> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
     {
         string key = string.Create(CultureInfo.InvariantCulture, $"openmeteo:{options.Value.Model}:{latitude:F3}:{longitude:F3}");
-        Forecast? forecast = await cache.GetOrCreateAsync(key, async (ICacheEntry entry) =>
+        Forecast? forecast = await cache.GetOrCreateAsync(key, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.CacheMinutes);
             return await FetchForecastAsync(latitude, longitude, cancellationToken);

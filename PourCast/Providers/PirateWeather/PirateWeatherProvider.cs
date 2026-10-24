@@ -43,7 +43,7 @@ public class PirateWeatherProvider(HttpClient httpClient, IOptions<PirateWeather
     public async Task<Forecast> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
     {
         string key = string.Create(CultureInfo.InvariantCulture, $"pirateweather:{latitude:F3}:{longitude:F3}");
-        Forecast? forecast = await cache.GetOrCreateAsync(key, async (ICacheEntry entry) =>
+        Forecast? forecast = await cache.GetOrCreateAsync(key, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.CacheMinutes);
             return await FetchForecastAsync(latitude, longitude, cancellationToken);
