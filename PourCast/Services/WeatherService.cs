@@ -1,5 +1,6 @@
 using PourCast.Models;
 using PourCast.Providers;
+using PourCast.Services.Usage;
 
 namespace PourCast.Services;
 
@@ -7,8 +8,9 @@ namespace PourCast.Services;
 /// Gathers forecasts from every registered weather provider and combines them.
 /// </summary>
 /// <param name="providers">The registered weather providers.</param>
+/// <param name="usage">The API usage tracker.</param>
 /// <param name="logger">The logger.</param>
-public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<WeatherService> logger)
+public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracker usage, ILogger<WeatherService> logger)
 {
     /// <summary>
     /// Gets forecasts for a location from all providers in parallel and combines them.
@@ -23,6 +25,13 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         // Only providers configured for the range are asked; the rest are still listed so the page can show them.
         IEnumerable<Task<ProviderResult>> tasks = providers.Select(x => x.Ranges.Contains(range) ? GetForecastAsync(x, latitude, longitude, cancellationToken) : Task.FromResult(new ProviderResult { Source = x.Name, Status = ProviderStatus.NotUsed, Ranges = [.. x.Ranges] }));
         ProviderResult[] results = await Task.WhenAll(tasks);
+
+        // Usage is read after the calls, so it includes any made for this report.
+        foreach ((ProviderResult result, IWeatherProvider provider) in results.Zip(providers))
+        {
+            result.CallsToday = usage.GetCount(provider.UsageKey);
+            result.DailyLimit = provider.DailyLimit;
+        }
         List<Forecast> forecasts = results.Where(x => x.Forecast is not null).Select(x => x.Forecast!).ToList();
         List<HourlySummary> hourly = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts));
         List<HourlySummary> columns = ForecastCombiner.Combine(forecasts, ColumnBuilder.ForRange(range, timeZone, DateTimeOffset.UtcNow));
@@ -44,6 +53,11 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         {
             Forecast forecast = await provider.GetForecastAsync(latitude, longitude, cancellationToken);
             return new ProviderResult { Source = provider.Name, Status = ProviderStatus.Used, Ranges = [.. provider.Ranges], Forecast = forecast };
+        }
+        catch (DailyLimitExceededException ex)
+        {
+            logger.LogWarning("Skipped {Provider}: {Message}", provider.Name, ex.Message);
+            return new ProviderResult { Source = provider.Name, Status = ProviderStatus.LimitReached, Ranges = [.. provider.Ranges], Error = ex.Message };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

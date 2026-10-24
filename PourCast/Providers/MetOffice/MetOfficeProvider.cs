@@ -25,6 +25,16 @@ public class MetOfficeProvider(HttpClient httpClient, IOptions<MetOfficeOptions>
     public IReadOnlyList<ForecastRange> Ranges => options.Value.Ranges;
 
     /// <summary>
+    /// The key the provider's calls are counted against.
+    /// </summary>
+    public string UsageKey => options.Value.UsageKey;
+
+    /// <summary>
+    /// The maximum number of calls per UTC day, or null for no limit.
+    /// </summary>
+    public int? DailyLimit => options.Value.DailyLimit;
+
+    /// <summary>
     /// Gets the forecast for a location from the Met Office, using the cache where possible.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

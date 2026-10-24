@@ -19,4 +19,14 @@ public class GeocodingOptions
     /// How long to cache search results for, in minutes.
     /// </summary>
     public int CacheMinutes { get; set; } = 1440;
+
+    /// <summary>
+    /// The key calls are counted against, shared with the Open-Meteo forecast providers.
+    /// </summary>
+    public string UsageKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The maximum number of calls per UTC day, or null for no limit.
+    /// </summary>
+    public int? DailyLimit { get; set; }
 }

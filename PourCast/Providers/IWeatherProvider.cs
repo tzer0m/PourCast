@@ -18,6 +18,16 @@ public interface IWeatherProvider
     IReadOnlyList<ForecastRange> Ranges { get; }
 
     /// <summary>
+    /// The key the provider's calls are counted against.
+    /// </summary>
+    string UsageKey { get; }
+
+    /// <summary>
+    /// The maximum number of calls per UTC day, or null for no limit.
+    /// </summary>
+    int? DailyLimit { get; }
+
+    /// <summary>
     /// Gets the forecast for a location.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

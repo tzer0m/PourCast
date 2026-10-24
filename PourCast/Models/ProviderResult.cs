@@ -29,6 +29,16 @@ public class ProviderResult
     public Forecast? Forecast { get; set; }
 
     /// <summary>
+    /// The number of calls made today against the provider's usage key.
+    /// </summary>
+    public int CallsToday { get; set; }
+
+    /// <summary>
+    /// The provider's daily limit, or null for no limit.
+    /// </summary>
+    public int? DailyLimit { get; set; }
+
+    /// <summary>
     /// The error message, if the request failed.
     /// </summary>
     public string? Error { get; set; }

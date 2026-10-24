@@ -26,6 +26,16 @@ public class OpenMeteoEnsembleProvider(HttpClient httpClient, IOptions<OpenMeteo
     public IReadOnlyList<ForecastRange> Ranges => options.Value.Ranges;
 
     /// <summary>
+    /// The key the provider's calls are counted against.
+    /// </summary>
+    public string UsageKey => options.Value.UsageKey;
+
+    /// <summary>
+    /// The maximum number of calls per UTC day, or null for no limit.
+    /// </summary>
+    public int? DailyLimit => options.Value.DailyLimit;
+
+    /// <summary>
     /// Gets the ensemble forecast for a location, using the cache where possible.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>

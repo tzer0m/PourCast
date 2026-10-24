@@ -298,6 +298,17 @@ body {
   color: #22c55e;
 }
 
+.source-usage {
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.source-usage-high {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
 .source-failed {
   color: #ef4444;
 }

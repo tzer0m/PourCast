@@ -18,5 +18,10 @@ public enum ProviderStatus
     /// <summary>
     /// The provider isn't configured for this range, so wasn't asked.
     /// </summary>
-    NotUsed
+    NotUsed,
+
+    /// <summary>
+    /// The provider was skipped because its daily limit has been reached.
+    /// </summary>
+    LimitReached
 }
