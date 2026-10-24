@@ -3,44 +3,23 @@
 @{
     ViewData["Title"] = "Home";
 }
-<p id="status">Finding Your Location…</p>
-<section id="sources" hidden>
-    <label for="source">Source</label>
-    <select id="source"></select>
-    <p id="errors" class="source"></p>
-</section>
-<section id="current" hidden>
-    <h2>Now</h2>
-    <p class="now-temp"><span id="current-temp"></span> <span id="current-condition"></span></p>
-    <dl class="now-details">
-        <dt>Feels Like</dt><dd id="current-feels"></dd>
-        <dt>Wind</dt><dd id="current-wind"></dd>
-        <dt>Humidity</dt><dd id="current-humidity"></dd>
-        <dt>Pressure</dt><dd id="current-pressure"></dd>
-    </dl>
-    <p class="source">Source: <span id="current-source"></span></p>
-</section>
-<section id="hourly" hidden>
-    <h2>Next 24 Hours</h2>
-    <div class="table-scroll">
-        <table>
-            <thead>
-                <tr><th>Time</th><th>Condition</th><th>Temp</th><th>Feels Like</th><th>Rain Chance</th><th>Rain</th><th>Wind</th><th>Gusts</th></tr>
-            </thead>
-            <tbody id="hourly-body"></tbody>
-        </table>
+<p id="status" class="status">Finding Your Location…</p>
+<section id="hourly" class="card" hidden>
+    <div class="card-header">
+        <h2>Next 24 Hours</h2>
+        <div class="legend">
+            <span class="legend-item"><span class="swatch swatch-average"></span>Average</span>
+            <span class="legend-item"><span class="swatch swatch-range"></span>Source Range</span>
+            <span class="legend-item"><span class="swatch swatch-rain"></span>Rain (Shade = Chance)</span>
+        </div>
     </div>
-</section>
-<section id="daily" hidden>
-    <h2>Next 7 Days</h2>
-    <div class="table-scroll">
-        <table>
-            <thead>
-                <tr><th>Day</th><th>Condition</th><th>High</th><th>Low</th><th>Rain Chance</th><th>Rain</th><th>Wind</th><th>Gusts</th><th>Sunrise</th><th>Sunset</th></tr>
-            </thead>
-            <tbody id="daily-body"></tbody>
-        </table>
+    <div class="chart">
+        <svg id="axis" class="axis"></svg>
+        <div id="strip-scroll" class="strip-scroll">
+            <svg id="strip" class="strip"></svg>
+        </div>
     </div>
+    <p id="sources" class="sources"></p>
 </section>
 @section Scripts {
     <script src="~/js/index.js" asp-append-version="true"></script>

@@ -19,14 +19,14 @@ public class IndexModel(WeatherService weatherService) : PageModel
     }
 
     /// <summary>
-    /// Returns the forecasts from all providers for a location as JSON.
+    /// Returns the combined weather report for a location as JSON.
     /// </summary>
     /// <param name="latitude">The latitude of the location.</param>
     /// <param name="longitude">The longitude of the location.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
     {
-        List<ProviderResult> results = await weatherService.GetForecastsAsync(latitude, longitude, cancellationToken);
-        return new JsonResult(results);
+        WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, cancellationToken);
+        return new JsonResult(report);
     }
 }

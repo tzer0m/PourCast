@@ -1,134 +1,185 @@
-const conditionLabels = {
-  Unknown: "Unknown",
-  Clear: "Clear",
-  PartlyCloudy: "Partly Cloudy",
-  Cloudy: "Cloudy",
-  Fog: "Fog",
-  Drizzle: "Drizzle",
-  Rain: "Rain",
-  HeavyRain: "Heavy Rain",
-  FreezingRain: "Freezing Rain",
-  Sleet: "Sleet",
-  Hail: "Hail",
-  Showers: "Showers",
-  Snow: "Snow",
-  SnowShowers: "Snow Showers",
-  Thunderstorm: "Thunderstorm"
+const statusElement = document.getElementById("status");
+const axisElement = document.getElementById("axis");
+const stripElement = document.getElementById("strip");
+const svgNamespace = "http://www.w3.org/2000/svg";
+
+// Chart geometry in pixels.
+const layout = {
+  minimumColumnWidth: 56,
+  axisWidth: 44,
+  height: 360,
+  timeY: 24,
+  temperatureLabelY: 58,
+  temperatureTop: 92,
+  temperatureBottom: 228,
+  rainTop: 262,
+  rainBottom: 336,
+  minimumRainScale: 2
 };
 
-const statusElement = document.getElementById("status");
-const sourceElement = document.getElementById("source");
-let results = [];
-
-function format(value, unit, digits = 0) {
-  return value === null || value === undefined ? "–" : `${value.toFixed(digits)}${unit}`;
+function svg(tag, attributes = {}, text) {
+  const node = document.createElementNS(svgNamespace, tag);
+  Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
 
-function compass(degrees) {
-  if (degrees === null || degrees === undefined) return "";
-  const points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-  return points[Math.round(degrees / 45) % 8];
+function hourLabel(date) {
+  const hour = date.getHours();
+  return `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
 }
 
-function time(value) {
-  return value ? new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "–";
-}
-
-function cell(row, text) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  row.appendChild(td);
-}
-
-function renderCurrent(forecast) {
-  const current = forecast.current;
-  if (!current) return;
-  document.getElementById("current-temp").textContent = format(current.temperature, "°C");
-  document.getElementById("current-condition").textContent = conditionLabels[current.condition];
-  document.getElementById("current-feels").textContent = format(current.feelsLike, "°C");
-  document.getElementById("current-wind").textContent = `${format(current.windSpeed, " mph")} ${compass(current.windDirection)} (Gusts ${format(current.windGust, " mph")})`;
-  document.getElementById("current-humidity").textContent = format(current.humidity, "%");
-  document.getElementById("current-pressure").textContent = format(current.pressure, " hPa");
-  document.getElementById("current-source").textContent = forecast.locationName ? `${forecast.source} (${forecast.locationName})` : forecast.source;
-  document.getElementById("current").hidden = false;
-}
-
-function renderHourly(forecast) {
-  const body = document.getElementById("hourly-body");
-  body.replaceChildren();
-  const now = Date.now() - 60 * 60 * 1000;
-  forecast.hourly.filter(h => new Date(h.time).getTime() >= now).slice(0, 24).forEach(h => {
-    const row = document.createElement("tr");
-    cell(row, time(h.time));
-    cell(row, conditionLabels[h.condition]);
-    cell(row, format(h.temperature, "°C"));
-    cell(row, format(h.feelsLike, "°C"));
-    cell(row, format(h.precipitationProbability, "%"));
-    cell(row, format(h.precipitation, " mm", 1));
-    cell(row, `${format(h.windSpeed, " mph")} ${compass(h.windDirection)}`);
-    cell(row, format(h.windGust, " mph"));
-    body.appendChild(row);
+function windowHours(hourly) {
+  const start = new Date();
+  start.setHours(6, 0, 0, 0);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return hourly.filter(h => {
+    const time = new Date(h.time);
+    return time >= start && time < end && h.temperatureAverage !== null;
   });
+}
+
+function temperatureStep(range) {
+  if (range <= 8) return 2;
+  if (range <= 20) return 4;
+  return 5;
+}
+
+// Smooth path through points using a Catmull-Rom spline.
+function smoothPath(points, move = true) {
+  if (points.length === 0) return "";
+  let path = move ? `M ${points[0][0]} ${points[0][1]}` : `L ${points[0][0]} ${points[0][1]}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    path += ` C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${p2[0]} ${p2[1]}`;
+  }
+  return path;
+}
+
+function renderStrip(hourly) {
+  const hours = windowHours(hourly);
+  if (hours.length === 0) {
+    statusElement.textContent = "No hourly data available for today.";
+    statusElement.hidden = false;
+    return;
+  }
+
+  // Temperature scale snapped to tidy steps.
+  const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax]);
+  const rawLow = Math.min(...temperatures);
+  const rawHigh = Math.max(...temperatures);
+  const step = temperatureStep(rawHigh - rawLow);
+  const low = Math.floor((rawLow - 1) / step) * step;
+  const high = Math.ceil((rawHigh + 1) / step) * step;
+  const temperatureY = t => layout.temperatureTop + (high - t) / (high - low) * (layout.temperatureBottom - layout.temperatureTop);
+
+  // Rain scale.
+  const rainScale = Math.max(layout.minimumRainScale, Math.ceil(Math.max(...hours.map(h => h.precipitationAverage ?? 0))));
+  const rainY = mm => layout.rainBottom - Math.min(mm, rainScale) / rainScale * (layout.rainBottom - layout.rainTop);
+
+  // Stretch columns to fill the available width, scrolling only when they would get too narrow.
+  const scroll = document.getElementById("strip-scroll");
   document.getElementById("hourly").hidden = false;
-}
+  stripElement.setAttribute("width", 0);
+  axisElement.setAttribute("width", layout.axisWidth);
+  axisElement.setAttribute("height", layout.height);
+  const columnWidth = Math.max(layout.minimumColumnWidth, scroll.clientWidth / hours.length);
+  const width = hours.length * columnWidth;
+  const centre = i => i * columnWidth + columnWidth / 2;
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
 
-function renderDaily(forecast) {
-  const body = document.getElementById("daily-body");
-  body.replaceChildren();
-  forecast.daily.forEach(d => {
-    const row = document.createElement("tr");
-    cell(row, new Date(d.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }));
-    cell(row, conditionLabels[d.condition]);
-    cell(row, format(d.temperatureMax, "°C"));
-    cell(row, format(d.temperatureMin, "°C"));
-    cell(row, format(d.precipitationProbability, "%"));
-    cell(row, format(d.precipitationTotal, " mm", 1));
-    cell(row, format(d.windSpeedMax, " mph"));
-    cell(row, format(d.windGustMax, " mph"));
-    cell(row, time(d.sunrise));
-    cell(row, time(d.sunset));
-    body.appendChild(row);
+  stripElement.replaceChildren();
+  axisElement.replaceChildren();
+  stripElement.setAttribute("width", width);
+  stripElement.setAttribute("height", layout.height);
+  stripElement.setAttribute("viewBox", `0 0 ${width} ${layout.height}`);
+
+  // Current hour highlight.
+  const nowIndex = hours.findIndex(h => new Date(h.time).getTime() === now.getTime());
+  if (nowIndex >= 0) {
+    stripElement.appendChild(svg("rect", { class: "now-column", x: nowIndex * columnWidth + 3, y: 4, width: columnWidth - 6, height: layout.height - 8, rx: 12 }));
+  }
+
+  // Gridlines and y axis labels.
+  for (let t = low; t <= high; t += step) {
+    stripElement.appendChild(svg("line", { class: "grid", x1: 0, x2: width, y1: temperatureY(t), y2: temperatureY(t) }));
+    axisElement.appendChild(svg("text", { class: "axis-label axis-temperature", x: layout.axisWidth - 8, y: temperatureY(t) + 4 }, `${t}°`));
+  }
+  [0, rainScale / 2, rainScale].forEach(mm => {
+    stripElement.appendChild(svg("line", { class: mm === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: rainY(mm), y2: rainY(mm) }));
+    axisElement.appendChild(svg("text", { class: "axis-label axis-rain", x: layout.axisWidth - 8, y: rainY(mm) + 4 }, mm === 0 ? "0" : `${+mm.toFixed(1)}`));
   });
-  document.getElementById("daily").hidden = false;
-}
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.temperatureTop - 14 }, "°C"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 8, y: layout.rainTop - 14 }, "mm"));
 
-function renderSources() {
-  sourceElement.replaceChildren();
-  results.forEach((r, i) => {
-    const option = document.createElement("option");
-    option.value = i;
-    option.textContent = r.forecast ? r.source : `${r.source} (Unavailable)`;
-    option.disabled = !r.forecast;
-    sourceElement.appendChild(option);
+  // Column labels, midnight dividers and rain bars.
+  hours.forEach((h, i) => {
+    const time = new Date(h.time);
+    const isNow = i === nowIndex;
+    const isMidnight = time.getHours() === 0;
+    if (isMidnight) {
+      stripElement.appendChild(svg("line", { class: "day-divider", x1: i * columnWidth, x2: i * columnWidth, y1: 8, y2: layout.height - 8 }));
+    }
+    const label = isNow ? "Now" : isMidnight ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
+    stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
+    stripElement.appendChild(svg("text", { class: "temperature-label", x: centre(i), y: layout.temperatureLabelY }, `${Math.round(h.temperatureAverage)}°`));
+
+    const rain = h.precipitationAverage ?? 0;
+    if (rain > 0) {
+      const chance = (h.precipitationProbabilityAverage ?? 100) / 100;
+      const y = Math.min(rainY(rain), layout.rainBottom - 2);
+      const bar = svg("rect", { class: "rain-bar", x: i * columnWidth + 12, y, width: columnWidth - 24, height: layout.rainBottom - y, rx: 4 });
+      bar.style.setProperty("--chance", 0.2 + 0.8 * chance);
+      bar.appendChild(svg("title", {}, `${rain.toFixed(1)} mm · ${Math.round(chance * 100)}% Chance`));
+      stripElement.appendChild(bar);
+      if (rain >= 0.1) {
+        stripElement.appendChild(svg("text", { class: "rain-label", x: centre(i), y: y - 5 }, rain.toFixed(1)));
+      }
+    }
   });
-  const errors = results.filter(r => r.error).map(r => `${r.source}: ${r.error}`);
-  document.getElementById("errors").textContent = errors.join(" · ");
-  const first = results.findIndex(r => r.forecast);
-  document.getElementById("sources").hidden = false;
-  if (first < 0) return;
-  sourceElement.value = first;
-  renderSelected();
+
+  // Temperature range band and average line.
+  const maxPoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureMax)]);
+  const minPoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureMin)]).reverse();
+  const averagePoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureAverage)]);
+  stripElement.appendChild(svg("path", { class: "temperature-range", d: `${smoothPath(maxPoints)} ${smoothPath(minPoints, false)} Z` }));
+  stripElement.appendChild(svg("path", { class: "temperature-average", d: smoothPath(averagePoints) }));
+  averagePoints.forEach(([x, y], i) => stripElement.appendChild(svg("circle", { class: i === nowIndex ? "temperature-point temperature-point-now" : "temperature-point", cx: x, cy: y, r: i === nowIndex ? 5 : 3 })));
+
+  if (nowIndex >= 0) {
+    scroll.scrollLeft = Math.max(0, centre(nowIndex) - scroll.clientWidth / 3);
+  }
 }
 
-function renderSelected() {
-  const forecast = results[sourceElement.value]?.forecast;
-  if (!forecast) return;
-  renderCurrent(forecast);
-  renderHourly(forecast);
-  renderDaily(forecast);
-}
+let lastHourly = null;
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (lastHourly) renderStrip(lastHourly); }, 150);
+});
 
-sourceElement.addEventListener("change", renderSelected);
+function renderSources(sources) {
+  document.getElementById("sources").textContent = "Sources: " + sources.map(s => s.forecast ? s.source : `${s.source} (Unavailable)`).join(" · ");
+}
 
 async function load(latitude, longitude) {
   statusElement.textContent = "Loading Forecast…";
   try {
     const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    results = await response.json();
-    renderSources();
+    const report = await response.json();
     statusElement.hidden = true;
+    lastHourly = report.hourly;
+    renderStrip(report.hourly);
+    renderSources(report.sources);
   } catch (error) {
+    statusElement.hidden = false;
     statusElement.textContent = `Couldn't load the forecast (${error.message}).`;
   }
 }
