@@ -3,8 +3,8 @@ const axisElement = document.getElementById("axis");
 const stripElement = document.getElementById("strip");
 const svgNamespace = "http://www.w3.org/2000/svg";
 
-// Chart geometry in pixels.
-const layout = {
+// Chart geometry in pixels, before stretching to fit.
+const chartLayout = {
   minimumColumnWidth: 56,
   axisWidth: 28,
   minimumUvScale: 1,
@@ -15,12 +15,12 @@ const layout = {
   sunY: 88,
   temperatureTop: 106,
   temperatureBottom: 236,
-  uvTop: 270,
-  uvBottom: 338,
-  humidityTop: 372,
-  humidityBottom: 440,
-  rainTop: 474,
-  rainBottom: 548,
+  rainTop: 270,
+  rainBottom: 344,
+  uvTop: 378,
+  uvBottom: 446,
+  humidityTop: 480,
+  humidityBottom: 548,
   windTop: 582,
   windBottom: 650,
   windArrowY: 670,
@@ -148,6 +148,29 @@ function nightPeriods(daylight) {
   return periods;
 }
 
+// Stretches the chart sections so the chart card matches the summary column's height on wide screens.
+function fitLayout() {
+  const base = chartLayout;
+  if (window.matchMedia("(max-width: 900px)").matches) return base;
+  stripElement.setAttribute("height", 0);
+  axisElement.setAttribute("height", 0);
+  const chrome = document.getElementById("hourly").offsetHeight;
+  const extra = document.getElementById("summary").offsetHeight - chrome - base.height;
+  if (extra <= 0) return base;
+  const sections = [["temperatureTop", "temperatureBottom"], ["rainTop", "rainBottom"], ["uvTop", "uvBottom"], ["humidityTop", "humidityBottom"], ["windTop", "windBottom"]];
+  const total = sections.reduce((sum, [top, bottom]) => sum + base[bottom] - base[top], 0);
+  const scaled = { ...base };
+  let offset = 0;
+  sections.forEach(([top, bottom]) => {
+    scaled[top] = base[top] + offset;
+    offset += extra * (base[bottom] - base[top]) / total;
+    scaled[bottom] = base[bottom] + offset;
+  });
+  scaled.windArrowY = base.windArrowY + offset;
+  scaled.height = base.height + offset;
+  return scaled;
+}
+
 function renderStrip(hourly, daylight) {
   const hours = windowHours(hourly);
   if (hours.length === 0) {
@@ -155,6 +178,8 @@ function renderStrip(hourly, daylight) {
     statusElement.hidden = false;
     return;
   }
+  document.getElementById("dashboard").hidden = false;
+  const layout = fitLayout();
 
   // Temperature scale snapped to tidy steps.
   const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
@@ -171,7 +196,7 @@ function renderStrip(hourly, daylight) {
 
   // Stretch columns to fill the available width, scrolling only when they would get too narrow.
   const scroll = document.getElementById("strip-scroll");
-  document.getElementById("hourly").hidden = false;
+  document.getElementById("dashboard").hidden = false;
   stripElement.setAttribute("width", 0);
   axisElement.setAttribute("width", layout.axisWidth);
   axisElement.setAttribute("height", layout.height);
@@ -232,7 +257,7 @@ function renderStrip(hourly, daylight) {
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.temperatureTop - 9 }, "°C"));
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 9 }, "mm"));
 
-  // UV index section between temperature and rain.
+  // UV index section between rain and humidity.
   const uvValues = hours.flatMap(h => [h.uvIndexMax, h.uvIndexClearSkyMax]).filter(u => u !== null);
   const uvScale = Math.max(layout.minimumUvScale, ...uvValues);
   const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
@@ -252,7 +277,7 @@ function renderStrip(hourly, daylight) {
   });
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.windTop - 9 }, "mph"));
 
-  // Humidity section between UV and rain.
+  // Humidity section between UV and wind.
   // Axis starts just below the day's lowest humidity (rounded down to 10%) and runs to 100%.
   const humidityValues = hours.map(h => h.humidityMin ?? h.humidityAverage).filter(rh => rh !== null);
   const humidityFloor = Math.min(layout.maximumHumidityFloor, Math.floor((Math.min(100, ...humidityValues) - 5) / 10) * 10);
@@ -405,6 +430,136 @@ window.addEventListener("resize", () => {
   resizeTimer = setTimeout(() => { if (lastReport) renderStrip(lastReport.hourly, lastReport.daylight); }, 150);
 });
 
+// Daily summary tiles: headline is now, bar shows the 24 hour range with daylight shaded.
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function periodStats(period, key) {
+  const entries = period.map(h => [h, h[`${key}Average`]]).filter(([, v]) => v !== null && v !== undefined);
+  if (entries.length === 0) return null;
+  const values = entries.map(([, v]) => v);
+  const maxEntry = entries.reduce((best, entry) => entry[1] > best[1] ? entry : best);
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    avg: values.reduce((sum, v) => sum + v, 0) / values.length,
+    total: values.reduce((sum, v) => sum + v, 0),
+    peakTime: new Date(maxEntry[0].time)
+  };
+}
+
+// A small table with a Daylight row and a 24 Hours row.
+function statsTable(columns, rows) {
+  const table = element("table", "tile-table");
+  const head = element("tr");
+  head.appendChild(element("th"));
+  columns.forEach(c => head.appendChild(element("th", "", c)));
+  table.appendChild(element("thead")).appendChild(head);
+  const body = table.appendChild(element("tbody"));
+  rows.forEach(([label, values]) => {
+    const row = element("tr");
+    row.appendChild(element("th", "", label));
+    values.forEach(v => row.appendChild(element("td", "", v)));
+    body.appendChild(row);
+  });
+  return table;
+}
+
+function summaryTile(title, colour, headline, secondary, table, highlight) {
+  const tile = element("article", "tile");
+  const heading = element("h3", "tile-title", title);
+  heading.style.setProperty("--key", colour);
+  tile.appendChild(heading);
+  const main = element("div", "tile-main");
+  main.appendChild(element("span", "tile-headline", headline));
+  main.appendChild(element("span", "tile-secondary", secondary ? `Now · ${secondary}` : "Now"));
+  tile.appendChild(main);
+  tile.appendChild(table);
+  if (highlight) tile.appendChild(element("p", "tile-detail", highlight));
+  return tile;
+}
+
+function renderSummary(hourly, daylight) {
+  const hours = windowHours(hourly);
+  const container = document.getElementById("summary");
+  container.replaceChildren();
+  if (hours.length === 0) return;
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  const current = hours.find(h => new Date(h.time).getTime() === now.getTime()) ?? {};
+  const nights = nightPeriods(daylight);
+  const dayHours = hours.filter(h => {
+    const middle = new Date(new Date(h.time).getTime() + 30 * 60 * 1000);
+    return !nights.some(([from, to]) => middle >= from && middle < to);
+  });
+  const value = (key, digits, unit) => {
+    const v = current[`${key}Average`];
+    return v === null || v === undefined ? "–" : `${v.toFixed(digits)}${unit}`;
+  };
+  const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
+  const at = date => hourLabel(date);
+
+  // Low / Avg / High table for a metric over daylight and 24 hours.
+  const rangeTable = (key, format) => statsTable(["Low", "Avg", "High"], [["Daylight", dayHours], ["24 Hours", hours]].map(([label, period]) => {
+    const stats = periodStats(period, key);
+    return [label, stats ? [format(stats.min), format(stats.avg), format(stats.max)] : ["–", "–", "–"]];
+  }));
+
+  // Temperature.
+  const temperature = periodStats(hours, "temperature");
+  if (temperature) {
+    const degrees = formatter(0, "°");
+    container.appendChild(summaryTile("Temperature", "var(--temperature)", value("temperature", 0, "°"), "", rangeTable("temperature", degrees), `Warmest ${degrees(temperature.max)} at ${at(temperature.peakTime)}`));
+  }
+
+  // Feels like.
+  const feelsLike = periodStats(hours, "feelsLike");
+  if (feelsLike) {
+    const degrees = formatter(0, "°");
+    const coldest = hours.reduce((best, h) => h.feelsLikeAverage !== null && (best === null || h.feelsLikeAverage < best.feelsLikeAverage) ? h : best, null);
+    container.appendChild(summaryTile("Feels Like", "var(--feels-like)", value("feelsLike", 0, "°"), "", rangeTable("feelsLike", degrees), coldest ? `Coldest ${degrees(coldest.feelsLikeAverage)} at ${at(new Date(coldest.time))}` : ""));
+  }
+
+  // Rain: total, wettest hour and highest chance.
+  const rain = periodStats(hours, "precipitation");
+  if (rain) {
+    const mm = formatter(1, " mm");
+    const table = statsTable(["Total", "Wettest", "Chance"], [["Daylight", dayHours], ["24 Hours", hours]].map(([label, period]) => {
+      const amount = periodStats(period, "precipitation");
+      const chance = periodStats(period, "precipitationProbability");
+      return [label, [amount ? mm(amount.total) : "–", amount ? mm(amount.max) : "–", chance ? `${Math.round(chance.max)}%` : "–"]];
+    }));
+    container.appendChild(summaryTile("Rain", "rgb(var(--rain))", value("precipitation", 1, " mm"), `${value("precipitationProbability", 0, "%")} Chance`, table, rain.max > 0 ? `Wettest ${mm(rain.max)} at ${at(rain.peakTime)}` : "No Rain Expected"));
+  }
+
+  // UV.
+  const uv = periodStats(hours, "uvIndex");
+  const uvClearSky = periodStats(hours, "uvIndexClearSky");
+  if (uv) {
+    const index = formatter(1, "");
+    container.appendChild(summaryTile("UV", "var(--uv)", value("uvIndex", 1, ""), `Clear Sky ${value("uvIndexClearSky", 1, "")}`, rangeTable("uvIndex", index), `Peak ${index(uv.max)} at ${at(uv.peakTime)}${uvClearSky ? ` (Clear Sky ${index(uvClearSky.max)})` : ""}`));
+  }
+
+  // Humidity.
+  const humidity = periodStats(hours, "humidity");
+  if (humidity) {
+    container.appendChild(summaryTile("Humidity", "var(--humidity)", value("humidity", 0, "%"), "", rangeTable("humidity", formatter(0, "%"))));
+  }
+
+  // Wind.
+  const wind = periodStats(hours, "windSpeed");
+  const gust = periodStats(hours, "windGust");
+  if (wind) {
+    const mph = formatter(0, " mph");
+    const direction = current.windDirectionAverage === null || current.windDirectionAverage === undefined ? "" : ` from ${compass(current.windDirectionAverage)}`;
+    container.appendChild(summaryTile("Wind", "var(--wind)", value("windSpeed", 0, " mph"), `Gusts ${value("windGust", 0, " mph")}${direction}`, rangeTable("windSpeed", mph), gust ? `Strongest Gust ${mph(gust.max)} at ${at(gust.peakTime)}` : ""));
+  }
+}
+
 async function load(latitude, longitude) {
   statusElement.textContent = "Loading Forecast…";
   try {
@@ -413,6 +568,8 @@ async function load(latitude, longitude) {
     const report = await response.json();
     statusElement.hidden = true;
     lastReport = report;
+    document.getElementById("dashboard").hidden = false;
+    renderSummary(report.hourly, report.daylight);
     renderStrip(report.hourly, report.daylight);
   } catch (error) {
     statusElement.hidden = false;
