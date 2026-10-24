@@ -62,7 +62,7 @@ public class MetNorwayProvider(HttpClient httpClient, IOptions<MetNorwayOptions>
         // MET Norway rejects coordinates with more than 4 decimal places, and requests without an identifying User-Agent.
         string url = string.Create(CultureInfo.InvariantCulture, $"weatherapi/locationforecast/2.0/complete?lat={latitude:F4}&lon={longitude:F4}");
         using HttpRequestMessage request = new(HttpMethod.Get, url);
-        request.Headers.UserAgent.ParseAdd(options.Value.UserAgent);
+        request.Headers.TryAddWithoutValidation("User-Agent", options.Value.UserAgent);
         using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
         MetNorwayResponse result = await response.Content.ReadFromJsonAsync<MetNorwayResponse>(cancellationToken) ?? throw new InvalidOperationException("MET Norway returned an empty response.");
