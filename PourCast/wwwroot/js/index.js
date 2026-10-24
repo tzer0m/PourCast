@@ -6,7 +6,7 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 // Chart geometry in pixels.
 const layout = {
   minimumColumnWidth: 56,
-  axisWidth: 34,
+  axisWidth: 24,
   minimumUvScale: 4,
   height: 514,
   timeY: 22,
@@ -190,14 +190,14 @@ function renderStrip(hourly, daylight) {
   // Gridlines and y axis labels.
   for (let t = low; t <= high; t += step) {
     stripElement.appendChild(svg("line", { class: "grid", x1: 0, x2: width, y1: temperatureY(t), y2: temperatureY(t) }));
-    axisElement.appendChild(svg("text", { class: "axis-label axis-temperature", x: layout.axisWidth - 6, y: temperatureY(t) + 4 }, `${t}°`));
+    axisElement.appendChild(svg("text", { class: "axis-label axis-temperature", x: layout.axisWidth - 4, y: temperatureY(t) + 4 }, `${t}°`));
   }
   [0, rainScale / 2, rainScale].forEach(mm => {
     stripElement.appendChild(svg("line", { class: mm === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: rainY(mm), y2: rainY(mm) }));
-    axisElement.appendChild(svg("text", { class: "axis-label axis-rain", x: layout.axisWidth - 6, y: rainY(mm) + 4 }, mm === 0 ? "0" : `${+mm.toFixed(1)}`));
+    axisElement.appendChild(svg("text", { class: "axis-label axis-rain", x: layout.axisWidth - 4, y: rainY(mm) + 4 }, mm === 0 ? "0" : `${+mm.toFixed(1)}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 6, y: layout.temperatureTop - 14 }, "°C"));
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 6, y: layout.rainTop - 14 }, "mm"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.temperatureTop - 14 }, "°C"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 14 }, "mm"));
 
   // UV index section between temperature and rain.
   const uvValues = hours.flatMap(h => [h.uvIndexAverage, h.uvIndexClearSkyAverage]).filter(u => u !== null);
@@ -205,9 +205,9 @@ function renderStrip(hourly, daylight) {
   const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
   [0, uvScale / 2, uvScale].forEach(uv => {
     stripElement.appendChild(svg("line", { class: uv === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: uvY(uv), y2: uvY(uv) }));
-    axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 6, y: uvY(uv) + 4 }, `${uv}`));
+    axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: uvY(uv) + 4 }, `${uv}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 6, y: layout.uvTop - 14 }, "UV"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 14 }, "UV"));
 
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {
@@ -263,7 +263,7 @@ function renderStrip(hourly, daylight) {
   averagePoints.forEach(([x, y], i) => stripElement.appendChild(svg("circle", { class: i === nowIndex ? "temperature-point temperature-point-now" : "temperature-point", cx: x, cy: y, r: i === nowIndex ? 5 : 3 })));
 
   if (nowIndex >= 0) {
-    scroll.scrollLeft = Math.max(0, centre(nowIndex) - scroll.clientWidth / 3);
+    scroll.scrollLeft = nowIndex * columnWidth;
   }
 }
 
