@@ -63,6 +63,12 @@ body {
   min-width: 0;
 }
 
+.place-logo {
+  align-self: center;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
 .place-name {
   margin: 0;
   font-size: 1.5rem;

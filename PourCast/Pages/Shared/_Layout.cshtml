@@ -4,6 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - PourCast</title>
+    <meta name="description" content="Weather from many forecast sources, combined." />
+    <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f141b" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="PourCast" />
+    <link rel="icon" href="~/app-icons/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="~/favicon.ico" sizes="48x48" />
+    <link rel="apple-touch-icon" href="~/app-icons/apple-touch-icon.png" />
+    <link rel="manifest" href="~/manifest.webmanifest" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/PourCast.styles.css" asp-append-version="true" />
@@ -12,7 +22,6 @@
     <main>
         @RenderBody()
     </main>
-    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
