@@ -7,6 +7,7 @@ using PourCast.Providers.OpenMeteo;
 using PourCast.Providers.OpenMeteoEnsemble;
 using PourCast.Providers.PirateWeather;
 using PourCast.Providers.TomorrowIo;
+using PourCast.Providers.VisualCrossing;
 using PourCast.Providers.WeatherApi;
 using PourCast.Services;
 using PourCast.Services.Geocoding;
@@ -37,6 +38,8 @@ builder.Services.Configure<TomorrowIoOptions>(builder.Configuration.GetSection("
 builder.Services.AddHttpClient<IWeatherProvider, TomorrowIoProvider>("TomorrowIo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<TomorrowIoOptions>>().Value));
 builder.Services.Configure<WeatherApiOptions>(builder.Configuration.GetSection("Providers:WeatherApi"));
 builder.Services.AddHttpClient<IWeatherProvider, WeatherApiProvider>("WeatherApi", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<WeatherApiOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<WeatherApiOptions>>().Value));
+builder.Services.Configure<VisualCrossingOptions>(builder.Configuration.GetSection("Providers:VisualCrossing"));
+builder.Services.AddHttpClient<IWeatherProvider, VisualCrossingProvider>("VisualCrossing", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<VisualCrossingOptions>>().Value));
 builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
 builder.Services.Configure<CombiningOptions>(builder.Configuration.GetSection("Combining"));
