@@ -280,6 +280,27 @@ function renderStrip(hourly, daylight) {
   stripElement.appendChild(svg("path", { class: "temperature-average", d: smoothPath(averagePoints) }));
   averagePoints.forEach(([x, y], i) => stripElement.appendChild(svg("circle", { class: i === nowIndex ? "temperature-point temperature-point-now" : "temperature-point", cx: x, cy: y, r: i === nowIndex ? 5 : 3 })));
 
+  // Value labels for each line, placing pairs that share a section on opposite sides.
+  const valueLabel = (className, x, y, above, text) => stripElement.appendChild(svg("text", { class: `value-label ${className}`, x, y: above ? y - 8 : y + 15 }, text));
+  hours.forEach((h, i) => {
+    const x = centre(i);
+    const temperatureAbove = h.feelsLikeAverage === null || h.feelsLikeAverage <= h.temperatureAverage;
+    valueLabel("value-temperature", x, temperatureY(h.temperatureAverage), temperatureAbove, `${Math.round(h.temperatureAverage)}°`);
+    if (h.feelsLikeAverage !== null) {
+      valueLabel("value-feels-like", x, temperatureY(h.feelsLikeAverage), !temperatureAbove, `${Math.round(h.feelsLikeAverage)}°`);
+    }
+    const clearSkyAbove = h.uvIndexAverage === null || h.uvIndexClearSkyAverage === null || h.uvIndexClearSkyAverage >= h.uvIndexAverage;
+    if (h.uvIndexClearSkyAverage !== null) {
+      valueLabel("value-uv value-uv-clear-sky", x, uvY(h.uvIndexClearSkyAverage), clearSkyAbove, h.uvIndexClearSkyAverage.toFixed(1));
+    }
+    if (h.uvIndexAverage !== null) {
+      valueLabel("value-uv", x, uvY(h.uvIndexAverage), !clearSkyAbove || h.uvIndexClearSkyAverage === null, h.uvIndexAverage.toFixed(1));
+    }
+    if (h.humidityAverage !== null) {
+      valueLabel("value-humidity", x, humidityY(h.humidityAverage), h.humidityAverage < 75, `${Math.round(h.humidityAverage)}%`);
+    }
+  });
+
   if (nowIndex >= 0) {
     scroll.scrollLeft = nowIndex * columnWidth;
   }

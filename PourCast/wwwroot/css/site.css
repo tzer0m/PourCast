@@ -236,6 +236,36 @@ body {
   opacity: 0.85;
 }
 
+.value-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.value-temperature {
+  fill: var(--temperature);
+}
+
+.value-feels-like {
+  fill: var(--feels-like);
+}
+
+.value-uv {
+  fill: var(--uv);
+}
+
+.value-uv-clear-sky {
+  opacity: 0.7;
+}
+
+.value-humidity {
+  fill: var(--humidity);
+}
+
 .temperature-point {
   fill: var(--surface);
   stroke: var(--temperature);
