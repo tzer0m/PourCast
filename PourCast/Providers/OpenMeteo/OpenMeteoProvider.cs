@@ -7,7 +7,7 @@ using System.Globalization;
 namespace PourCast.Providers.OpenMeteo;
 
 /// <summary>
-/// Weather provider backed by the Open-Meteo forecast API.
+/// Weather provider backed by the Open-Meteo forecast API, either the best match blend or a single weather model.
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for Open-Meteo.</param>
 /// <param name="options">The Open-Meteo options.</param>
@@ -17,7 +17,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     /// <summary>
     /// The display name of the provider.
     /// </summary>
-    public string Name => "Open-Meteo";
+    public string Name => options.Value.Name;
 
     /// <summary>
     /// The forecast ranges this provider is used for.
@@ -42,7 +42,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task<Forecast> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
     {
-        string key = string.Create(CultureInfo.InvariantCulture, $"openmeteo:{latitude:F3}:{longitude:F3}");
+        string key = string.Create(CultureInfo.InvariantCulture, $"openmeteo:{options.Value.Model}:{latitude:F3}:{longitude:F3}");
         Forecast? forecast = await cache.GetOrCreateAsync(key, async (ICacheEntry entry) =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.CacheMinutes);
@@ -63,7 +63,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
         string current = "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m";
         string hourly = "temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,relative_humidity_2m,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,uv_index_clear_sky";
         string daily = "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset";
-        string url = string.Create(CultureInfo.InvariantCulture, $"v1/forecast?latitude={latitude}&longitude={longitude}&current={current}&hourly={hourly}&daily={daily}&timezone=GMT&wind_speed_unit=mph&forecast_days={options.Value.ForecastDays}");
+        string url = string.Create(CultureInfo.InvariantCulture, $"v1/forecast?latitude={latitude}&longitude={longitude}&current={current}&hourly={hourly}&daily={daily}&timezone=GMT&wind_speed_unit=mph&forecast_days={options.Value.ForecastDays}{(string.IsNullOrEmpty(options.Value.Model) ? string.Empty : $"&models={options.Value.Model}")}");
         OpenMeteoResponse response = await httpClient.GetFromJsonAsync<OpenMeteoResponse>(url, cancellationToken) ?? throw new InvalidOperationException("Open-Meteo returned an empty response.");
         TimeSpan offset = TimeSpan.FromSeconds(response.UtcOffsetSeconds);
 

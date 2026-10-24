@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PourCast.Providers;
 using PourCast.Providers.MetOffice;
@@ -19,8 +20,11 @@ builder.Services.Configure<UsageOptions>(builder.Configuration.GetSection("Usage
 builder.Services.AddSingleton<UsageTracker>();
 builder.Services.Configure<MetOfficeOptions>(builder.Configuration.GetSection("Providers:MetOffice"));
 builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<MetOfficeOptions>>().Value));
-builder.Services.Configure<OpenMeteoOptions>(builder.Configuration.GetSection("Providers:OpenMeteo"));
-builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoProvider>("OpenMeteo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoOptions>>().Value));
+AddOpenMeteo("OpenMeteoUkmo");
+AddOpenMeteo("OpenMeteoEcmwf");
+AddOpenMeteo("OpenMeteoIcon");
+AddOpenMeteo("OpenMeteoGfs");
+AddOpenMeteo("OpenMeteoMeteoFrance");
 builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSection("Providers:OpenMeteoEnsemble"));
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
 builder.Services.AddTransient<WeatherService>();
@@ -40,6 +44,13 @@ app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 app.Run();
+
+// Registers an Open-Meteo provider from its own appsettings section, so the same provider can be added once per weather model.
+void AddOpenMeteo(string section)
+{
+    OpenMeteoOptions options = builder.Configuration.GetSection($"Providers:{section}").Get<OpenMeteoOptions>() ?? new OpenMeteoOptions();
+    builder.Services.AddHttpClient(section, (HttpClient client) => client.BaseAddress = new Uri(options.BaseUrl)).AddHttpMessageHandler((IServiceProvider services) => UsageHandlerFor(services, options)).AddTypedClient<IWeatherProvider>((HttpClient client, IServiceProvider services) => new OpenMeteoProvider(client, Options.Create(options), services.GetRequiredService<IMemoryCache>()));
+}
 
 // Creates the usage handler for a provider's HTTP client from its options.
 static UsageHandler UsageHandlerFor(IServiceProvider services, ProviderOptions options)
