@@ -289,6 +289,11 @@ body {
   color: var(--text);
 }
 
+.sources-compare {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .source-icon {
   margin-right: 0.3rem;
   font-weight: 700;
@@ -316,6 +321,94 @@ body {
 .source-not-used {
   color: var(--muted);
   opacity: 0.7;
+}
+
+.compare-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.compare-select {
+  margin-left: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--grid-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.compare-export {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--grid-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.compare-export:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.compare-back {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.compare-scroll {
+  overflow-x: auto;
+}
+
+.compare-table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.compare-table th, .compare-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: right;
+  border-bottom: 1px solid var(--grid);
+}
+
+.compare-table tr:first-child th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.compare-source {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  text-align: left !important;
+  font-weight: 600;
+}
+
+.compare-failed {
+  color: #ef4444;
+}
+
+.compare-value {
+  background: rgba(239, 68, 68, calc(var(--far) * 0.45));
+}
+
+.compare-empty {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.compare-median td, .compare-median th {
+  font-weight: 700;
+  border-top: 2px solid var(--grid-strong);
 }
 
 .status {

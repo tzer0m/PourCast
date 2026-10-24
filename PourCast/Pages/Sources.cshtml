@@ -1,0 +1,27 @@
+﻿@page
+@model SourcesModel
+@{
+    ViewData["Title"] = "Compare Sources";
+}
+<header class="topbar">
+    <div class="place">
+        <h1 class="place-name">Compare Sources</h1>
+        <span id="compare-place" class="place-detail"></span>
+    </div>
+    <a id="compare-back" class="compare-back" href="/">Back to Forecast</a>
+</header>
+<div class="compare-controls">
+    <label>Metric <select id="compare-metric" class="compare-select"></select></label>
+    <label>From <select id="compare-start" class="compare-select"></select></label>
+    <button id="compare-export" class="compare-export" type="button" disabled>Export CSV</button>
+    <span class="compare-note">Cells are shaded by how far they are from the median for that hour.</span>
+</div>
+<p id="compare-status" class="status">Loading Sources…</p>
+<div class="card compare-card">
+    <div class="compare-scroll">
+        <table id="compare-table" class="compare-table"></table>
+    </div>
+</div>
+@section Scripts {
+    <script type="module" src="~/js/sources.js" asp-append-version="true"></script>
+}
