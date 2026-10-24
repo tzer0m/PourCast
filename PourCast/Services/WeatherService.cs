@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using PourCast.Models;
 using PourCast.Providers;
 using PourCast.Services.Usage;
+using System.Globalization;
 
 namespace PourCast.Services;
 
@@ -9,8 +12,10 @@ namespace PourCast.Services;
 /// </summary>
 /// <param name="providers">The registered weather providers.</param>
 /// <param name="usage">The API usage tracker.</param>
+/// <param name="usageOptions">The usage options, for how long to remember failures.</param>
+/// <param name="cache">The memory cache, used to remember recent failures.</param>
 /// <param name="logger">The logger.</param>
-public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracker usage, ILogger<WeatherService> logger)
+public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracker usage, IOptions<UsageOptions> usageOptions, IMemoryCache cache, ILogger<WeatherService> logger)
 {
     /// <summary>
     /// Gets forecasts for a location from all providers in parallel and combines them.
@@ -49,6 +54,12 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     /// <param name="cancellationToken">The cancellation token.</param>
     private async Task<ProviderResult> GetForecastAsync(IWeatherProvider provider, double latitude, double longitude, CancellationToken cancellationToken)
     {
+        // A provider that failed for this place recently is skipped until the failure expires, rather than called on every page load.
+        string failureKey = string.Create(CultureInfo.InvariantCulture, $"failure:{provider.Name}:{latitude:F3}:{longitude:F3}");
+        if (cache.TryGetValue(failureKey, out string? recentError))
+        {
+            return new ProviderResult { Source = provider.Name, Status = ProviderStatus.Failed, Ranges = [.. provider.Ranges], Error = $"{recentError} (retrying shortly)" };
+        }
         try
         {
             Forecast forecast = await provider.GetForecastAsync(latitude, longitude, cancellationToken);
@@ -59,9 +70,16 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
             logger.LogWarning("Skipped {Provider}: {Message}", provider.Name, ex.Message);
             return new ProviderResult { Source = provider.Name, Status = ProviderStatus.LimitReached, Ranges = [.. provider.Ranges], Error = ex.Message };
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (RateLimitedException ex)
         {
+            logger.LogWarning("Skipped {Provider}: {Message}", provider.Name, ex.Message);
+            return new ProviderResult { Source = provider.Name, Status = ProviderStatus.RateLimited, Ranges = [.. provider.Ranges], Error = ex.Message };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // Includes timeouts, which surface as cancellations even though the page request wasn't cancelled.
             logger.LogWarning(ex, "Failed to get forecast from {Provider}.", provider.Name);
+            cache.Set(failureKey, ex.Message, TimeSpan.FromMinutes(usageOptions.Value.FailureCacheMinutes));
             return new ProviderResult { Source = provider.Name, Status = ProviderStatus.Failed, Ranges = [.. provider.Ranges], Error = ex.Message };
         }
     }

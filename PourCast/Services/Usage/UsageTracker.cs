@@ -35,6 +35,16 @@ public class UsageTracker
     private DateOnly Day = DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <summary>
+    /// When each usage key's cooldown ends, after a provider responded with "too many requests". Not saved to the file.
+    /// </summary>
+    private readonly Dictionary<string, DateTimeOffset> CooldownEnds = [];
+
+    /// <summary>
+    /// How long to cool down when a provider doesn't say.
+    /// </summary>
+    private readonly TimeSpan DefaultCooldown;
+
+    /// <summary>
     /// Creates the tracker and loads today's counts from the file, if it has any.
     /// </summary>
     /// <param name="options">The usage options.</param>
@@ -43,6 +53,7 @@ public class UsageTracker
     public UsageTracker(IOptions<UsageOptions> options, IHostEnvironment environment, ILogger<UsageTracker> logger)
     {
         Logger = logger;
+        DefaultCooldown = TimeSpan.FromMinutes(options.Value.DefaultCooldownMinutes);
         FilePath = Path.IsPathRooted(options.Value.FilePath) ? options.Value.FilePath : Path.Combine(environment.ContentRootPath, options.Value.FilePath);
         Load();
     }
@@ -78,6 +89,34 @@ public class UsageTracker
         {
             ResetIfNewDay();
             return Counts.GetValueOrDefault(key);
+        }
+    }
+
+    /// <summary>
+    /// Returns when a usage key's cooldown ends, or null if it isn't cooling down.
+    /// </summary>
+    /// <param name="key">The usage key.</param>
+    public DateTimeOffset? GetCooldownEnd(string key)
+    {
+        lock (Gate)
+        {
+            return CooldownEnds.TryGetValue(key, out DateTimeOffset end) && end > DateTimeOffset.UtcNow ? end : null;
+        }
+    }
+
+    /// <summary>
+    /// Starts a cooldown for a usage key, for the time the provider asked for or the default.
+    /// </summary>
+    /// <param name="key">The usage key.</param>
+    /// <param name="retryAfter">How long the provider asked us to wait, if it said.</param>
+    public DateTimeOffset StartCooldown(string key, TimeSpan? retryAfter)
+    {
+        lock (Gate)
+        {
+            DateTimeOffset end = DateTimeOffset.UtcNow + (retryAfter is not null && retryAfter > TimeSpan.Zero ? retryAfter.Value : DefaultCooldown);
+            CooldownEnds[key] = end;
+            Logger.LogWarning("{Key} responded with too many requests; pausing calls until {End:HH:mm} UTC.", key, end);
+            return end;
         }
     }
 

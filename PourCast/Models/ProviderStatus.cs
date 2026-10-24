@@ -23,5 +23,10 @@ public enum ProviderStatus
     /// <summary>
     /// The provider was skipped because its daily limit has been reached.
     /// </summary>
-    LimitReached
+    LimitReached,
+
+    /// <summary>
+    /// The provider asked us to slow down, so it's paused until its cooldown ends.
+    /// </summary>
+    RateLimited
 }

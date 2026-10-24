@@ -44,7 +44,7 @@ function renderSources(sources) {
   sourcesElement.appendChild(Object.assign(document.createElement("span"), { className: "sources-title", textContent: "Sources" }));
   sources.forEach(source => {
     const item = document.createElement("span");
-    item.className = `source source-${source.status === "Used" ? "used" : source.status === "Failed" || source.status === "LimitReached" ? "failed" : "not-used"}`;
+    item.className = `source source-${source.status === "Used" ? "used" : source.status === "Failed" || source.status === "LimitReached" || source.status === "RateLimited" ? "failed" : "not-used"}`;
     item.appendChild(Object.assign(document.createElement("span"), { className: "source-icon", textContent: source.status === "Used" ? "✓" : "✗" }));
     item.appendChild(document.createTextNode(source.source));
     // Today's usage against the daily limit, e.g. "12%".
@@ -54,7 +54,7 @@ function renderSources(sources) {
       item.appendChild(Object.assign(document.createElement("span"), { className: percent >= 90 ? "source-usage source-usage-high" : "source-usage", textContent: `${percent}%` }));
     }
     const ranges = source.ranges.map(r => rangeNames[r] ?? r).join(", ");
-    const state = source.status === "Used" ? `Used for this view (${ranges})` : source.status === "Failed" ? `Failed: ${source.error}` : source.status === "LimitReached" ? "Daily limit reached" : `Not used for this view (only ${ranges})`;
+    const state = source.status === "Used" ? `Used for this view (${ranges})` : source.status === "Failed" ? `Failed: ${source.error}` : source.status === "LimitReached" ? "Daily limit reached" : source.status === "RateLimited" ? source.error : `Not used for this view (only ${ranges})`;
     item.title = `${state}\n${usage}`;
     sourcesElement.appendChild(item);
   });
