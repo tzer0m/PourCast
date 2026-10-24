@@ -7,16 +7,55 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 const layout = {
   minimumColumnWidth: 56,
   axisWidth: 44,
-  height: 378,
-  timeY: 24,
-  temperatureLabelY: 58,
-  feelsLikeLabelY: 78,
-  sunY: 98,
-  temperatureTop: 116,
-  temperatureBottom: 246,
-  rainTop: 280,
-  rainBottom: 354,
+  height: 412,
+  timeY: 22,
+  iconY: 30,
+  iconSize: 36,
+  temperatureLabelY: 90,
+  feelsLikeLabelY: 110,
+  sunY: 132,
+  temperatureTop: 150,
+  temperatureBottom: 280,
+  rainTop: 314,
+  rainBottom: 388,
   minimumRainScale: 2
+};
+
+// Meteocons icon for each condition, as [day, night].
+const conditionIcons = {
+  Unknown: ["not-available", "not-available"],
+  Clear: ["clear-day", "clear-night"],
+  PartlyCloudy: ["partly-cloudy-day", "partly-cloudy-night"],
+  Cloudy: ["overcast", "overcast"],
+  Fog: ["fog-day", "fog-night"],
+  Drizzle: ["drizzle", "drizzle"],
+  Rain: ["rain", "rain"],
+  HeavyRain: ["rain", "rain"],
+  FreezingRain: ["sleet", "sleet"],
+  Showers: ["partly-cloudy-day-rain", "partly-cloudy-night-rain"],
+  Sleet: ["sleet", "sleet"],
+  Hail: ["hail", "hail"],
+  Snow: ["snow", "snow"],
+  SnowShowers: ["partly-cloudy-day-snow", "partly-cloudy-night-snow"],
+  Thunderstorm: ["thunderstorms-day-rain", "thunderstorms-night-rain"]
+};
+
+const conditionLabels = {
+  Unknown: "Unknown",
+  Clear: "Clear",
+  PartlyCloudy: "Partly Cloudy",
+  Cloudy: "Cloudy",
+  Fog: "Fog",
+  Drizzle: "Drizzle",
+  Rain: "Rain",
+  HeavyRain: "Heavy Rain",
+  FreezingRain: "Freezing Rain",
+  Showers: "Showers",
+  Sleet: "Sleet",
+  Hail: "Hail",
+  Snow: "Snow",
+  SnowShowers: "Snow Showers",
+  Thunderstorm: "Thunderstorm"
 };
 
 function svg(tag, attributes = {}, text) {
@@ -122,7 +161,9 @@ function renderStrip(hourly, daylight) {
   // Night shading and sunrise/sunset markers.
   const start = new Date(hours[0].time).getTime();
   const timeX = date => (date.getTime() - start) / (60 * 60 * 1000) * columnWidth;
-  nightPeriods(daylight).forEach(([from, to]) => {
+  const nights = nightPeriods(daylight);
+  const isNight = date => nights.some(([from, to]) => date >= from && date < to);
+  nights.forEach(([from, to]) => {
     const x1 = Math.max(0, timeX(from));
     const x2 = Math.min(width, timeX(to));
     if (x2 > x1) stripElement.appendChild(svg("rect", { class: "night", x: x1, y: 0, width: x2 - x1, height: layout.height }));
@@ -165,6 +206,11 @@ function renderStrip(hourly, daylight) {
     }
     const label = isNow ? "Now" : isMidnight ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
+    const icon = conditionIcons[h.condition] ?? conditionIcons.Unknown;
+    const night = isNight(new Date(time.getTime() + 30 * 60 * 1000));
+    const image = svg("image", { class: "condition-icon", href: `/icons/${night ? icon[1] : icon[0]}.svg`, x: centre(i) - layout.iconSize / 2, y: layout.iconY, width: layout.iconSize, height: layout.iconSize });
+    image.appendChild(svg("title", {}, conditionLabels[h.condition] ?? h.condition));
+    stripElement.appendChild(image);
     stripElement.appendChild(svg("text", { class: "temperature-label", x: centre(i), y: layout.temperatureLabelY }, `${Math.round(h.temperatureAverage)}°`));
     if (h.feelsLikeAverage !== null) {
       stripElement.appendChild(svg("text", { class: "feels-like-value", x: centre(i), y: layout.feelsLikeLabelY }, `${Math.round(h.feelsLikeAverage)}°`));

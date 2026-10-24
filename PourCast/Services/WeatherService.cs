@@ -60,6 +60,7 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, ILogger<Wea
         {
             Time = hour.Key,
             SourceCount = hour.Count(),
+            Condition = hour.Where(x => x.Condition != WeatherCondition.Unknown).GroupBy(x => x.Condition).OrderByDescending(x => x.Count()).Select(x => x.Key).FirstOrDefault(),
             TemperatureAverage = temperatures.Count > 0 ? temperatures.Average() : null,
             TemperatureMin = temperatures.Count > 0 ? temperatures.Min() : null,
             TemperatureMax = temperatures.Count > 0 ? temperatures.Max() : null,

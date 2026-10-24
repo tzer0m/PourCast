@@ -16,6 +16,11 @@ public class HourlySummary
     public int SourceCount { get; set; }
 
     /// <summary>
+    /// The condition most sources agree on.
+    /// </summary>
+    public WeatherCondition Condition { get; set; }
+
+    /// <summary>
     /// Average temperature across sources in °C.
     /// </summary>
     public double? TemperatureAverage { get; set; }
