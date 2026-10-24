@@ -31,6 +31,11 @@ public class HourlySummary
     public double? TemperatureMax { get; set; }
 
     /// <summary>
+    /// Average feels like temperature across sources in °C.
+    /// </summary>
+    public double? FeelsLikeAverage { get; set; }
+
+    /// <summary>
     /// Average precipitation across sources in mm.
     /// </summary>
     public double? PrecipitationAverage { get; set; }

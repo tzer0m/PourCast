@@ -7,14 +7,15 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 const layout = {
   minimumColumnWidth: 56,
   axisWidth: 44,
-  height: 360,
+  height: 378,
   timeY: 24,
   temperatureLabelY: 58,
-  sunY: 80,
-  temperatureTop: 98,
-  temperatureBottom: 228,
-  rainTop: 262,
-  rainBottom: 336,
+  feelsLikeLabelY: 78,
+  sunY: 98,
+  temperatureTop: 116,
+  temperatureBottom: 246,
+  rainTop: 280,
+  rainBottom: 354,
   minimumRainScale: 2
 };
 
@@ -88,7 +89,7 @@ function renderStrip(hourly, daylight) {
   }
 
   // Temperature scale snapped to tidy steps.
-  const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax]);
+  const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeAverage]).filter(t => t !== null);
   const rawLow = Math.min(...temperatures);
   const rawHigh = Math.max(...temperatures);
   const step = temperatureStep(rawHigh - rawLow);
@@ -165,6 +166,9 @@ function renderStrip(hourly, daylight) {
     const label = isNow ? "Now" : isMidnight ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
     stripElement.appendChild(svg("text", { class: "temperature-label", x: centre(i), y: layout.temperatureLabelY }, `${Math.round(h.temperatureAverage)}°`));
+    if (h.feelsLikeAverage !== null) {
+      stripElement.appendChild(svg("text", { class: "feels-like-value", x: centre(i), y: layout.feelsLikeLabelY }, `${Math.round(h.feelsLikeAverage)}°`));
+    }
 
     const rain = h.precipitationAverage ?? 0;
     if (rain > 0) {
@@ -185,6 +189,10 @@ function renderStrip(hourly, daylight) {
   const minPoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureMin)]).reverse();
   const averagePoints = hours.map((h, i) => [centre(i), temperatureY(h.temperatureAverage)]);
   stripElement.appendChild(svg("path", { class: "temperature-range", d: `${smoothPath(maxPoints)} ${smoothPath(minPoints, false)} Z` }));
+  const feelsLikePoints = hours.map((h, i) => [centre(i), h.feelsLikeAverage]).filter(([, t]) => t !== null).map(([x, t]) => [x, temperatureY(t)]);
+  if (feelsLikePoints.length > 1) {
+    stripElement.appendChild(svg("path", { class: "feels-like", d: smoothPath(feelsLikePoints) }));
+  }
   stripElement.appendChild(svg("path", { class: "temperature-average", d: smoothPath(averagePoints) }));
   averagePoints.forEach(([x, y], i) => stripElement.appendChild(svg("circle", { class: i === nowIndex ? "temperature-point temperature-point-now" : "temperature-point", cx: x, cy: y, r: i === nowIndex ? 5 : 3 })));
 
