@@ -19,13 +19,49 @@ export function compass(degrees) {
   return points[Math.round(degrees / 22.5) % 16];
 }
 
-export function hourLabel(date) {
-  const hour = date.getHours();
+// The browser's time zone. Places can be in a different one.
+export const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Date and clock parts of a time in a time zone, as { year, month, day, hour, minute, second, weekday } with weekday 0 for Sunday.
+const partFormats = new Map();
+const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export function zonedParts(date, zone = browserZone) {
+  if (!partFormats.has(zone)) partFormats.set(zone, new Intl.DateTimeFormat("en-GB", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", weekday: "short" }));
+  const parts = Object.fromEntries(partFormats.get(zone).formatToParts(date).map(p => [p.type, p.value]));
+  return { year: +parts.year, month: +parts.month, day: +parts.day, hour: +parts.hour, minute: +parts.minute, second: +parts.second, weekday: weekdays.indexOf(parts.weekday) };
+}
+
+// How far ahead of UTC a time zone is at a given time, in milliseconds.
+export function zoneOffset(date, zone = browserZone) {
+  const p = zonedParts(date, zone);
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+// 6am in a time zone, a number of days from today there.
+export function zonedSixAm(daysFromToday, zone = browserZone) {
+  const today = zonedParts(new Date(), zone);
+  const wall = Date.UTC(today.year, today.month - 1, today.day + daysFromToday, 6);
+  // Checked twice, in case the offset changes between the guess and the answer (clock changes).
+  const guess = wall - zoneOffset(new Date(wall), zone);
+  return new Date(wall - zoneOffset(new Date(guess), zone));
+}
+
+// Short name for a time zone at a given time, e.g. "BST" or "GMT-4".
+export function zoneName(date, zone = browserZone) {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: zone, timeZoneName: "short" }).formatToParts(date).find(p => p.type === "timeZoneName")?.value ?? zone;
+}
+
+export function hourLabel(date, zone = browserZone) {
+  const hour = zonedParts(date, zone).hour;
   return `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
 }
 
-export function clockTime(date) {
-  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+export function clockTime(date, zone = browserZone) {
+  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+}
+
+export function dayLabel(date, zone = browserZone) {
+  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: zone });
 }
 
 // A tidy step (1, 2, 2.5 or 5 times a power of ten) giving roughly the target number of ticks.

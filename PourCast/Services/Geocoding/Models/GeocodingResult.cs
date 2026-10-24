@@ -42,4 +42,10 @@ public class GeocodingResult
     /// </summary>
     [JsonPropertyName("admin2")]
     public string? Admin2 { get; set; }
+
+    /// <summary>
+    /// The IANA time zone of the place, e.g. America/New_York.
+    /// </summary>
+    [JsonPropertyName("timezone")]
+    public string? Timezone { get; set; }
 }

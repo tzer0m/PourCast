@@ -669,6 +669,21 @@ body {
   text-anchor: middle;
 }
 
+.time-place {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.axis-zone {
+  fill: var(--muted);
+  font-size: 8px;
+  text-anchor: end;
+}
+
+.axis-zone-place {
+  opacity: 0.8;
+}
+
 .day-label {
   fill: var(--text);
   font-size: 13px;

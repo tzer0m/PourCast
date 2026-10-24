@@ -20,7 +20,7 @@ public static class ColumnBuilder
     /// The windows for a range's chart, starting at 6am today on the local clock: 6 hour columns for 7 days, or daily columns for 30 days.
     /// </summary>
     /// <param name="range">The forecast range.</param>
-    /// <param name="timeZone">The viewer's time zone, so columns line up with their clock.</param>
+    /// <param name="timeZone">The place's time zone, so columns line up with its clock.</param>
     /// <param name="now">The current time.</param>
     public static List<ColumnWindow> ForRange(ForecastRange range, TimeZoneInfo timeZone, DateTimeOffset now)
     {

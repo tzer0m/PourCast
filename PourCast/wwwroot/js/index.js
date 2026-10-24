@@ -2,9 +2,9 @@ import { renderChart } from "/js/chart.js";
 import { renderSummary } from "/js/summary.js";
 import { initSearch } from "/js/search.js";
 import { availableRanges, hoursInRange, columnsForRange } from "/js/range.js";
+import { browserZone } from "/js/helpers.js";
 
 const statusElement = document.getElementById("status");
-const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // The week forecast (days and 7 Days) loads straight away; the month forecast only when 30 Days is first picked.
 let lastReport = null;
@@ -66,7 +66,7 @@ function showDay(day) {
     option.classList.toggle("range-menu-option-selected", key === day.key);
     option.setAttribute("aria-selected", String(key === day.key));
   });
-  renderSummary(hoursInRange(lastReport.hourly, day), lastReport.daylight, day);
+  renderSummary(hoursInRange(lastReport.hourly, day), lastReport.daylight, day, lastLocation.zone);
 }
 
 // Scrolls the chart without the scroll changing the selected day. The day is followed again once scrolling stops.
@@ -158,8 +158,8 @@ function renderSources(sources) {
 function loadMonth() {
   if (!monthLoading) {
     const location = lastLocation;
-    const { latitude, longitude } = location;
-    monthLoading = fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&range=month&timeZone=${encodeURIComponent(timeZone)}`).then(response => {
+    const { latitude, longitude, zone } = location;
+    monthLoading = fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&range=month&timeZone=${encodeURIComponent(zone)}`).then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     }).then(report => {
@@ -176,7 +176,7 @@ function loadMonth() {
 }
 
 function render() {
-  const ranges = availableRanges(lastReport.hourly);
+  const ranges = availableRanges(lastReport.hourly, lastLocation.zone);
   const range = ranges.find(r => r.key === selectedRange) ?? ranges[0];
   selectedRange = range.key;
   // Chips for wide screens and a custom dropdown for phones; CSS shows whichever fits.
@@ -237,12 +237,12 @@ function render() {
   // Hide any loading message before drawing, as the chart sizes itself to the space left on the page.
   statusElement.hidden = true;
   renderSources(report.sources);
-  renderSummary(hoursInRange(report.hourly, range), report.daylight, range);
+  renderSummary(hoursInRange(report.hourly, range), report.daylight, range, lastLocation.zone);
   if (range.stepHours === 1) {
     renderDays(report, ranges.filter(r => r.stepHours === 1), range);
     return;
   }
-  const chart = renderChart(columnsForRange(report, range), report.daylight, range.stepHours);
+  const chart = renderChart(columnsForRange(report, range), report.daylight, range.stepHours, lastLocation.zone);
   if (!chart) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
@@ -254,7 +254,7 @@ function render() {
 // Draws every day as one chart, a day wide on screen, and scrolls to the selected day.
 function renderDays(report, days, range) {
   const columns = hoursInRange(report.hourly, { start: days[0].start, end: days[days.length - 1].end });
-  const chart = renderChart(columns, report.daylight, 1, 24);
+  const chart = renderChart(columns, report.daylight, 1, lastLocation.zone, 24);
   if (!chart) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
@@ -286,26 +286,29 @@ function savePlace(place) {
   url.searchParams.set("lon", place.longitude.toFixed(4));
   url.searchParams.set("name", place.name);
   if (place.detail) url.searchParams.set("detail", place.detail); else url.searchParams.delete("detail");
+  url.searchParams.set("tz", place.zone);
   history.replaceState(null, "", url);
 }
 
-async function load(latitude, longitude, name, detail) {
+// Loads the forecast for a place. Its time zone decides where days start; the browser's is used if it isn't known.
+async function load(latitude, longitude, name, detail, zone = browserZone) {
+  try { new Intl.DateTimeFormat("en-GB", { timeZone: zone }); } catch { zone = browserZone; }
   statusElement.hidden = false;
   statusElement.textContent = "Loading Forecast…";
   if (name) showPlace(name, detail);
   try {
-    const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&timeZone=${encodeURIComponent(timeZone)}`);
+    const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&timeZone=${encodeURIComponent(zone)}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     statusElement.hidden = true;
     lastReport = report;
-    lastLocation = { latitude, longitude };
+    lastLocation = { latitude, longitude, zone };
     monthReport = null;
     monthLoading = null;
     if (!name) {
       showPlace(report.locationName ?? `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`, "Current Location");
     }
-    savePlace({ latitude, longitude, name: placeNameElement.textContent, detail: placeDetailElement.textContent });
+    savePlace({ latitude, longitude, zone, name: placeNameElement.textContent, detail: placeDetailElement.textContent });
     document.getElementById("dashboard").hidden = false;
     render();
   } catch (error) {
@@ -324,7 +327,7 @@ function locate() {
   navigator.geolocation.getCurrentPosition(p => load(p.coords.latitude, p.coords.longitude), e => { statusElement.textContent = `Couldn't get your location (${e.message}). Search for a place instead.`; }, { timeout: 10000, maximumAge: 600000 });
 }
 
-initSearch(place => load(place.latitude, place.longitude, place.name, [place.region, place.country].filter(Boolean).join(", ")));
+initSearch(place => load(place.latitude, place.longitude, place.name, [place.region, place.country].filter(Boolean).join(", "), place.timeZone ?? undefined));
 document.getElementById("locate").addEventListener("click", locate);
 
 // Start from the place in the URL if there is one, otherwise the browser location.
@@ -332,7 +335,7 @@ const startUrl = new URL(window.location.href);
 const startLatitude = parseFloat(startUrl.searchParams.get("lat"));
 const startLongitude = parseFloat(startUrl.searchParams.get("lon"));
 if (!Number.isNaN(startLatitude) && !Number.isNaN(startLongitude)) {
-  load(startLatitude, startLongitude, startUrl.searchParams.get("name") ?? undefined, startUrl.searchParams.get("detail") ?? undefined);
+  load(startLatitude, startLongitude, startUrl.searchParams.get("name") ?? undefined, startUrl.searchParams.get("detail") ?? undefined, startUrl.searchParams.get("tz") ?? undefined);
 } else {
   locate();
 }

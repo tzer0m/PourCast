@@ -29,4 +29,9 @@ public class Place
     /// The longitude of the place.
     /// </summary>
     public double Longitude { get; set; }
+
+    /// <summary>
+    /// The IANA time zone of the place, if known.
+    /// </summary>
+    public string? TimeZone { get; set; }
 }

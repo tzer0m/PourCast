@@ -1,29 +1,25 @@
-// Ranges the forecast can be viewed for: single 6am-to-6am days, 7 days in 6 hour columns, or 30 days in daily columns.
-// The 30 day range uses the separate month forecast (source "Month"); the rest use the week forecast.
-function sixAm(daysFromToday) {
-  const date = new Date();
-  date.setDate(date.getDate() + daysFromToday);
-  date.setHours(6, 0, 0, 0);
-  return date;
-}
+import { zonedSixAm, zonedParts, dayLabel } from "/js/helpers.js";
 
-function dateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+// Ranges the forecast can be viewed for: single 6am-to-6am days, 7 days in 6 hour columns, or 30 days in daily columns.
+// Days run from 6am in the place's time zone. The 30 day range uses the separate month forecast (source "Month"); the rest use the week forecast.
+function dateKey(date, zone) {
+  const p = zonedParts(date, zone);
+  return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
 // The ranges that have data, as { key, label, start, end, stepHours, source }.
-export function availableRanges(hourly) {
+export function availableRanges(hourly, zone) {
   if (hourly.length === 0) return [];
   const last = new Date(hourly[hourly.length - 1].time);
   const ranges = [];
   for (let day = 0; day < 7; day++) {
-    const start = sixAm(day);
+    const start = zonedSixAm(day, zone);
     if (start > last) break;
-    const label = day === 0 ? "Today" : day === 1 ? "Tomorrow" : start.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
-    ranges.push({ key: day === 0 ? "today" : dateKey(start), label, start, end: sixAm(day + 1), stepHours: 1, source: "Week" });
+    const label = day === 0 ? "Today" : day === 1 ? "Tomorrow" : dayLabel(start, zone);
+    ranges.push({ key: day === 0 ? "today" : dateKey(start, zone), label, start, end: zonedSixAm(day + 1, zone), stepHours: 1, source: "Week" });
   }
-  ranges.push({ key: "week", label: "7 Days", start: sixAm(0), end: sixAm(7), stepHours: 6, source: "Week" });
-  ranges.push({ key: "month", label: "30 Days", start: sixAm(0), end: sixAm(30), stepHours: 24, source: "Month" });
+  ranges.push({ key: "week", label: "7 Days", start: zonedSixAm(0, zone), end: zonedSixAm(7, zone), stepHours: 6, source: "Week" });
+  ranges.push({ key: "month", label: "30 Days", start: zonedSixAm(0, zone), end: zonedSixAm(30, zone), stepHours: 24, source: "Month" });
   return ranges;
 }
 

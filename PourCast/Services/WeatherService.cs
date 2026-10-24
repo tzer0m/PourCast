@@ -24,7 +24,7 @@ public class WeatherService(IEnumerable<IWeatherProvider> providers, UsageTracke
     /// <param name="latitude">The latitude of the location.</param>
     /// <param name="longitude">The longitude of the location.</param>
     /// <param name="range">The forecast range, which decides which providers are used and the chart columns.</param>
-    /// <param name="timeZone">The viewer's time zone, so columns line up with their clock.</param>
+    /// <param name="timeZone">The place's time zone, so columns line up with its clock.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task<WeatherReport> GetReportAsync(double latitude, double longitude, ForecastRange range, TimeZoneInfo timeZone, CancellationToken cancellationToken)
     {

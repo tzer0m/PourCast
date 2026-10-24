@@ -32,7 +32,7 @@ public class GeocodingService(HttpClient httpClient, IOptions<GeocodingOptions> 
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.CacheMinutes);
             string url = string.Create(CultureInfo.InvariantCulture, $"v1/search?name={Uri.EscapeDataString(trimmed)}&count={options.Value.ResultCount}&language=en&format=json");
             GeocodingResponse? response = await httpClient.GetFromJsonAsync<GeocodingResponse>(url, cancellationToken);
-            return response?.Results?.Select(x => new Place { Name = x.Name, Region = x.Admin2 ?? x.Admin1, Country = x.Country, Latitude = x.Latitude, Longitude = x.Longitude }).ToList() ?? [];
+            return response?.Results?.Select(x => new Place { Name = x.Name, Region = x.Admin2 ?? x.Admin1, Country = x.Country, Latitude = x.Latitude, Longitude = x.Longitude, TimeZone = x.Timezone }).ToList() ?? [];
         });
         return places ?? [];
     }

@@ -26,7 +26,7 @@ public class IndexModel(WeatherService weatherService, GeocodingService geocodin
     /// <param name="latitude">The latitude of the location.</param>
     /// <param name="longitude">The longitude of the location.</param>
     /// <param name="range">The forecast range, week by default.</param>
-    /// <param name="timeZone">The viewer's IANA time zone, e.g. Europe/London. UTC if missing or unknown.</param>
+    /// <param name="timeZone">The place's IANA time zone, e.g. Europe/London. UTC if missing or unknown.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken, ForecastRange range = ForecastRange.Week, string? timeZone = null)
     {

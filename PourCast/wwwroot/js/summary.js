@@ -1,4 +1,4 @@
-import { element, compass, hourLabel, nightPeriods } from "/js/helpers.js";
+import { element, compass, hourLabel, dayLabel, nightPeriods } from "/js/helpers.js";
 
 // Daily summary tiles: current value, highlights, and daylight vs 24 hour sliders.
 function periodStats(period, key) {
@@ -76,7 +76,8 @@ function averageOf(hours) {
 }
 
 // Summarises the hours in a range. Shows the current hour's values if the range includes now, otherwise the range average.
-export function renderSummary(hours, daylight, range) {
+// Times are in the browser's time zone, matching the chart's top row; daily dates are in the place's.
+export function renderSummary(hours, daylight, range, zone) {
   const container = document.getElementById("summary");
   container.replaceChildren();
   if (hours.length === 0) return;
@@ -97,7 +98,7 @@ export function renderSummary(hours, daylight, range) {
     return v === null || v === undefined ? "–" : `${v.toFixed(digits)}${unit}`;
   };
   const formatter = (digits, unit) => v => `${v.toFixed(digits)}${unit}`;
-  const at = date => range.stepHours === 1 ? hourLabel(date) : range.stepHours >= 24 ? date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" }) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
+  const at = date => range.stepHours === 1 ? hourLabel(date) : range.stepHours >= 24 ? dayLabel(date, zone) : `${date.toLocaleDateString("en-GB", { weekday: "short" })} ${hourLabel(date)}`;
 
   // Two sliders, daylight and 24 hours, on the same scale so they can be compared.
   const rangeTable = (key, format) => {

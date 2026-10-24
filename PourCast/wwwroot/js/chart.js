@@ -1,5 +1,5 @@
 import { conditionIcons, conditionLabels } from "/js/conditions.js";
-import { svg, compass, hourLabel, clockTime, niceStep, ticks, linearPath, smoothPath, nightPeriods } from "/js/helpers.js";
+import { svg, compass, hourLabel, clockTime, dayLabel, niceStep, ticks, linearPath, smoothPath, nightPeriods, browserZone, zonedParts, zoneOffset, zoneName } from "/js/helpers.js";
 
 const axisElement = document.getElementById("axis");
 const stripElement = document.getElementById("strip");
@@ -46,6 +46,16 @@ function withDayRow(base) {
   return shifted;
 }
 
+// Adds a second row of times below the first, in the place's time zone, pushing everything below it down.
+// Used when the place's clock differs from the browser's.
+function withPlaceRow(base) {
+  const rowHeight = 16;
+  const shifted = { ...base };
+  ["iconY", "sunY", "temperatureTop", "temperatureBottom", "rainTop", "rainBottom", "uvTop", "uvBottom", "humidityTop", "humidityBottom", "windTop", "windBottom", "windArrowY", "height"].forEach(key => shifted[key] = base[key] + rowHeight);
+  shifted.placeTimeY = base.timeY + rowHeight;
+  return shifted;
+}
+
 // Removes the UV section and moves the sections below it up. Used when there's no UV data, e.g. the 30 day view.
 function withoutUv(base) {
   const gap = base.humidityTop - base.uvTop;
@@ -83,8 +93,8 @@ function fitLayout(base) {
 }
 
 // Draws the chart for a set of columns, each stepHours long, sized so visibleColumns fill the width and the rest scroll.
-// Returns the column width and the index of the current column, or null if there are no columns.
-export function renderChart(hours, daylight, stepHours, visibleColumns = hours.length) {
+// Days are divided in the place's time zone. Returns the column width and the index of the current column, or null if there are no columns.
+export function renderChart(hours, daylight, stepHours, zone, visibleColumns = hours.length) {
   if (hours.length === 0) {
     return null;
   }
@@ -102,9 +112,14 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
   stripElement.setAttribute("width", width);
 
   const hasUv = hours.some(h => h.uvIndexAverage !== null || h.uvIndexClearSkyAverage !== null);
-  const baseLayout = stepHours === 6 ? withDayRow(screenLayout) : screenLayout;
-  const layout = fitLayout(hasUv ? baseLayout : withoutUv(baseLayout));
   const daily = stepHours >= 24;
+  // A second row of times in the place's time zone when its clock differs from the browser's. Daily columns show dates, so don't need it.
+  const firstTime = new Date(hours[0].time);
+  const lastTime = new Date(hours[hours.length - 1].time);
+  const showPlaceRow = !daily && [firstTime, lastTime].some(t => zoneOffset(t, zone) !== zoneOffset(t, browserZone));
+  const dayLayout = stepHours === 6 ? withDayRow(screenLayout) : screenLayout;
+  const baseLayout = showPlaceRow ? withPlaceRow(dayLayout) : dayLayout;
+  const layout = fitLayout(hasUv ? baseLayout : withoutUv(baseLayout));
 
   // Temperature scale snapped to tidy steps.
   const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
@@ -155,8 +170,8 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
     const x = timeX(time);
     if (x < 0 || x > width) return;
     stripElement.appendChild(svg("line", { class: "sun-line", x1: x, x2: x, y1: layout.sunY + 6, y2: layout.windBottom }));
-    const label = svg("text", { class: "sun-label", x: x + 4, y: layout.sunY }, `${kind === "sunrise" ? "↑" : "↓"} ${clockTime(time)}`);
-    label.appendChild(svg("title", {}, `${kind === "sunrise" ? "Sunrise" : "Sunset"} ${clockTime(time)}`));
+    const label = svg("text", { class: "sun-label", x: x + 4, y: layout.sunY }, `${kind === "sunrise" ? "↑" : "↓"} ${clockTime(time, zone)}`);
+    label.appendChild(svg("title", {}, `${kind === "sunrise" ? "Sunrise" : "Sunset"} ${clockTime(time, zone)}`));
     stripElement.appendChild(label);
   });
 
@@ -183,6 +198,11 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
     axisElement.appendChild(svg("text", { class: "axis-label axis-rain", x: layout.axisWidth - 4, y: rainY(mm) + 4 }, mm === 0 ? "0" : `${+mm.toFixed(1)}`));
   });
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.temperatureTop - 9 }, "°C"));
+  // Which time zone each row of times is in, e.g. "BST" and "GMT-4".
+  if (showPlaceRow) {
+    axisElement.appendChild(svg("text", { class: "axis-zone", x: layout.axisWidth - 2, y: layout.timeY }, zoneName(firstTime, browserZone)));
+    axisElement.appendChild(svg("text", { class: "axis-zone axis-zone-place", x: layout.axisWidth - 2, y: layout.placeTimeY }, zoneName(firstTime, zone)));
+  }
   axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 9 }, "mm"));
 
   // UV index section between rain and humidity.
@@ -221,16 +241,22 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {
     const time = new Date(h.time);
+    const placeTime = zonedParts(time, zone);
     const isNow = i === nowIndex;
-    // Hourly views divide days at midnight; the 7 day view divides them at each 6am start.
-    // Dividers: midnight for hourly views, each 6am for the 7 day view, and each Monday for the 30 day view.
-    const isDayStart = stepHours === 1 ? time.getHours() === 0 : daily ? time.getDay() === 1 : time.getHours() === 6;
+    // Dividers, in the place's time: midnight for hourly views, each 6am for the 7 day view, and each Monday for the 30 day view.
+    const isDayStart = stepHours === 1 ? placeTime.hour === 0 : daily ? placeTime.weekday === 1 : placeTime.hour === 6;
     if (isDayStart && i > 0) {
       stripElement.appendChild(svg("line", { class: "day-divider", x1: i * columnWidth, x2: i * columnWidth, y1: 8, y2: layout.height - 8 }));
     }
-    // The 7 day view has its own day row above, so its columns always show the time.
-    const label = daily ? (isNow ? "Today" : time.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })) : isNow ? "Now" : stepHours === 1 && isDayStart && i > 0 ? time.toLocaleDateString("en-GB", { weekday: "short" }) : hourLabel(time);
+    // The 7 day view has its own day row above, so its columns always show the time. With two rows of times,
+    // the top row is the browser's time and the day name goes on the place's row instead.
+    const weekday = time.toLocaleDateString("en-GB", { weekday: "short", timeZone: zone });
+    const label = daily ? (isNow ? "Today" : dayLabel(time, zone)) : isNow ? "Now" : !showPlaceRow && stepHours === 1 && isDayStart && i > 0 ? weekday : hourLabel(time);
     stripElement.appendChild(svg("text", { class: isNow ? "time-label time-now" : "time-label", x: centre(i), y: layout.timeY }, label));
+    if (showPlaceRow) {
+      const placeLabel = stepHours === 1 && isDayStart && i > 0 ? weekday : hourLabel(time, zone);
+      stripElement.appendChild(svg("text", { class: isNow ? "time-label time-place time-now" : "time-label time-place", x: centre(i), y: layout.placeTimeY }, placeLabel));
+    }
     const icon = conditionIcons[h.condition] ?? conditionIcons.Unknown;
     const night = !daily && isNight(new Date((time.getTime() + new Date(h.end).getTime()) / 2));
     const image = svg("image", { class: "condition-icon", href: `/icons/${night ? icon[1] : icon[0]}.svg`, x: centre(i) - layout.iconSize / 2, y: layout.iconY, width: layout.iconSize, height: layout.iconSize });
@@ -249,12 +275,12 @@ export function renderChart(hours, daylight, stepHours, visibleColumns = hours.l
     const days = [];
     hours.forEach((h, i) => {
       const time = new Date(h.time);
-      if (i === 0 || time.getHours() === 6) days.push({ start: i, time });
+      if (i === 0 || zonedParts(time, zone).hour === 6) days.push({ start: i, time });
       days[days.length - 1].end = i;
     });
     days.forEach(day => {
       const x = (day.start + day.end + 1) / 2 * columnWidth;
-      stripElement.appendChild(svg("text", { class: "day-label", x, y: layout.dayY }, day.time.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })));
+      stripElement.appendChild(svg("text", { class: "day-label", x, y: layout.dayY }, dayLabel(day.time, zone)));
     });
   }
 
