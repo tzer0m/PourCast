@@ -75,7 +75,7 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
             Longitude = response.Longitude,
             RetrievedAt = DateTimeOffset.UtcNow,
             Current = MapCurrent(response.Current, offset),
-            Hourly = MapHourly(response.Hourly, offset),
+            Hourly = ShiftedHourly(response.Hourly, offset),
             Daily = MapDaily(response.Daily, offset)
         };
     }
@@ -109,7 +109,20 @@ public class OpenMeteoProvider(HttpClient httpClient, IOptions<OpenMeteoOptions>
     }
 
     /// <summary>
-    /// Maps the Open-Meteo hourly arrays to hourly forecasts.
+    /// Maps the Open-Meteo hourly arrays to hourly forecasts, with rain moved onto the hour it fell in.
+    /// </summary>
+    /// <param name="hourly">The hourly arrays.</param>
+    /// <param name="offset">The location's UTC offset.</param>
+    private static List<HourlyForecast> ShiftedHourly(OpenMeteoHourly? hourly, TimeSpan offset)
+    {
+        // Open-Meteo labels rain and its chance with the end of the hour they cover.
+        List<HourlyForecast> result = MapHourly(hourly, offset);
+        PrecipitationTiming.ShiftToHourStart(result, true);
+        return result;
+    }
+
+    /// <summary>
+    /// Maps the Open-Meteo hourly arrays to hourly forecasts, with rain still labelled as Open-Meteo sends it.
     /// </summary>
     /// <param name="hourly">The hourly arrays.</param>
     /// <param name="offset">The location's UTC offset.</param>

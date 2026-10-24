@@ -114,8 +114,21 @@ public class OpenMeteoEnsembleProvider(HttpClient httpClient, IOptions<OpenMeteo
             Longitude = root.GetProperty("longitude").GetDouble(),
             RetrievedAt = DateTimeOffset.UtcNow,
             IsEnsemble = true,
-            Hourly = result.Where(x => x.Temperature is not null).ToList()
+            Hourly = ShiftPerMember(result).Where(x => x.Temperature is not null).ToList()
         };
+    }
+
+    /// <summary>
+    /// Moves each member's rain (and the chance derived from it) onto the hour it fell in, as Open-Meteo labels rain with the end of the hour.
+    /// </summary>
+    /// <param name="hours">Every member's hours.</param>
+    private static List<HourlyForecast> ShiftPerMember(List<HourlyForecast> hours)
+    {
+        foreach (IGrouping<string?, HourlyForecast> member in hours.GroupBy(x => x.Member))
+        {
+            PrecipitationTiming.ShiftToHourStart(member.OrderBy(x => x.Time).ToList(), true);
+        }
+        return hours;
     }
 
     /// <summary>

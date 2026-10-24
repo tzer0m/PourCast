@@ -73,6 +73,9 @@ public class MetOfficeProvider(HttpClient httpClient, IOptions<MetOfficeOptions>
 
         // Map to the common forecast model.
         List<HourlyForecast> hourly = hourlyFeature?.Properties?.TimeSeries.Select(MapHourly).ToList() ?? [];
+
+        // The Met Office labels rain with the end of the hour it fell in.
+        PrecipitationTiming.ShiftToHourStart(hourly, false);
         List<double> coordinates = hourlyFeature?.Geometry?.Coordinates ?? [];
         return new Forecast
         {
