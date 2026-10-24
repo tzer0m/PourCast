@@ -68,7 +68,7 @@ public class MetNorwayProvider(HttpClient httpClient, IOptions<MetNorwayOptions>
         MetNorwayResponse result = await response.Content.ReadFromJsonAsync<MetNorwayResponse>(cancellationToken) ?? throw new InvalidOperationException("MET Norway returned an empty response.");
 
         // Only steps with a following hour are hourly; later steps are 6 hourly and are left out.
-        List<HourlyForecast> hourly = (result.Properties?.Timeseries ?? []).Where(x => x.Data?.NextOneHours is not null).Select(MapHour).ToList();
+        List<HourlyForecast> hourly = [.. (result.Properties?.Timeseries ?? []).Where(x => x.Data?.NextOneHours is not null).Select(MapHour)];
         return new Forecast
         {
             Source = Name,
