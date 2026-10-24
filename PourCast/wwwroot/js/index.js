@@ -7,7 +7,7 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 const layout = {
   minimumColumnWidth: 56,
   axisWidth: 28,
-  minimumUvScale: 4,
+  minimumUvScale: 1,
   height: 690,
   timeY: 22,
   iconY: 30,
@@ -24,8 +24,9 @@ const layout = {
   windTop: 582,
   windBottom: 650,
   windArrowY: 670,
-  minimumWindScale: 20,
-  minimumRainScale: 2
+  minimumWindScale: 5,
+  maximumHumidityFloor: 70,
+  minimumRainScale: 0.5
 };
 
 // Meteocons icon for each condition, as [day, night].
@@ -92,10 +93,21 @@ function windowHours(hourly) {
   });
 }
 
-function temperatureStep(range) {
-  if (range <= 8) return 2;
-  if (range <= 20) return 4;
-  return 5;
+// A tidy step (1, 2, 2.5 or 5 times a power of ten) giving roughly the target number of ticks.
+function niceStep(span, target) {
+  const raw = span / target;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const fraction = raw / magnitude;
+  return (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10) * magnitude;
+}
+
+// Tick values at multiples of the step that fall within the range.
+function ticks(low, high, step) {
+  const values = [];
+  for (let value = Math.ceil(low / step - 1e-9) * step; value <= high + 1e-9; value += step) {
+    values.push(+value.toFixed(6));
+  }
+  return values;
 }
 
 // Straight path through points, used where smoothing could dip below zero.
@@ -148,13 +160,13 @@ function renderStrip(hourly, daylight) {
   const temperatures = hours.flatMap(h => [h.temperatureMin, h.temperatureMax, h.feelsLikeMin, h.feelsLikeMax]).filter(t => t !== null);
   const rawLow = Math.min(...temperatures);
   const rawHigh = Math.max(...temperatures);
-  const step = temperatureStep(rawHigh - rawLow);
-  const low = Math.floor((rawLow - 1) / step) * step;
-  const high = Math.ceil((rawHigh + 1) / step) * step;
+  const low = rawLow - 0.5;
+  const high = rawHigh + 0.5;
+  const step = Math.max(1, niceStep(high - low, 4));
   const temperatureY = t => layout.temperatureTop + (high - t) / (high - low) * (layout.temperatureBottom - layout.temperatureTop);
 
   // Rain scale.
-  const rainScale = Math.max(layout.minimumRainScale, Math.ceil(Math.max(...hours.map(h => h.precipitationMax ?? h.precipitationAverage ?? 0))));
+  const rainScale = Math.max(layout.minimumRainScale, ...hours.map(h => h.precipitationMax ?? h.precipitationAverage ?? 0));
   const rainY = mm => layout.rainBottom - Math.min(mm, rainScale) / rainScale * (layout.rainBottom - layout.rainTop);
 
   // Stretch columns to fill the available width, scrolling only when they would get too narrow.
@@ -201,45 +213,55 @@ function renderStrip(hourly, daylight) {
     stripElement.appendChild(svg("rect", { class: "now-column", x: nowIndex * columnWidth + 3, y: 4, width: columnWidth - 6, height: layout.height - 8, rx: 12 }));
   }
 
+  // Dividers between chart sections, across both the chart and the axis.
+  [layout.uvTop, layout.humidityTop, layout.rainTop, layout.windTop].forEach(top => {
+    const y = top - 21;
+    stripElement.appendChild(svg("line", { class: "section-divider", x1: 0, x2: width, y1: y, y2: y }));
+    axisElement.appendChild(svg("line", { class: "section-divider", x1: 0, x2: layout.axisWidth, y1: y, y2: y }));
+  });
+
   // Gridlines and y axis labels.
-  for (let t = low; t <= high; t += step) {
+  for (const t of ticks(low, high, step)) {
     stripElement.appendChild(svg("line", { class: "grid", x1: 0, x2: width, y1: temperatureY(t), y2: temperatureY(t) }));
     axisElement.appendChild(svg("text", { class: "axis-label axis-temperature", x: layout.axisWidth - 4, y: temperatureY(t) + 4 }, `${t}°`));
   }
-  [0, rainScale / 2, rainScale].forEach(mm => {
+  ticks(0, rainScale, niceStep(rainScale, 3)).forEach(mm => {
     stripElement.appendChild(svg("line", { class: mm === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: rainY(mm), y2: rainY(mm) }));
     axisElement.appendChild(svg("text", { class: "axis-label axis-rain", x: layout.axisWidth - 4, y: rainY(mm) + 4 }, mm === 0 ? "0" : `${+mm.toFixed(1)}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.temperatureTop - 14 }, "°C"));
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 14 }, "mm"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.temperatureTop - 9 }, "°C"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.rainTop - 9 }, "mm"));
 
   // UV index section between temperature and rain.
   const uvValues = hours.flatMap(h => [h.uvIndexMax, h.uvIndexClearSkyMax]).filter(u => u !== null);
-  const uvScale = Math.ceil(Math.max(layout.minimumUvScale, ...uvValues) / 2) * 2;
+  const uvScale = Math.max(layout.minimumUvScale, ...uvValues);
   const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
-  [0, uvScale / 2, uvScale].forEach(uv => {
+  ticks(0, uvScale, Math.max(1, niceStep(uvScale, 3))).forEach(uv => {
     stripElement.appendChild(svg("line", { class: uv === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: uvY(uv), y2: uvY(uv) }));
     axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: uvY(uv) + 4 }, `${uv}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 14 }, "UV"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 9 }, "UV"));
 
   // Wind section below rain.
   const windValues = hours.flatMap(h => [h.windSpeedMax, h.windGustMax]).filter(w => w !== null);
-  const windScale = Math.ceil(Math.max(layout.minimumWindScale, ...windValues) / 10) * 10;
+  const windScale = Math.max(layout.minimumWindScale, ...windValues);
   const windY = mph => layout.windBottom - mph / windScale * (layout.windBottom - layout.windTop);
-  [0, windScale / 2, windScale].forEach(mph => {
+  ticks(0, windScale, Math.max(1, niceStep(windScale, 3))).forEach(mph => {
     stripElement.appendChild(svg("line", { class: mph === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: windY(mph), y2: windY(mph) }));
     axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: windY(mph) + 4 }, `${mph}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.windTop - 14 }, "mph"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.windTop - 9 }, "mph"));
 
   // Humidity section between UV and rain.
-  const humidityY = rh => layout.humidityBottom - rh / 100 * (layout.humidityBottom - layout.humidityTop);
-  [0, 50, 100].forEach(rh => {
-    stripElement.appendChild(svg("line", { class: rh === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: humidityY(rh), y2: humidityY(rh) }));
+  // Axis starts just below the day's lowest humidity (rounded down to 10%) and runs to 100%.
+  const humidityValues = hours.map(h => h.humidityMin ?? h.humidityAverage).filter(rh => rh !== null);
+  const humidityFloor = Math.min(layout.maximumHumidityFloor, Math.floor((Math.min(100, ...humidityValues) - 5) / 10) * 10);
+  const humidityY = rh => layout.humidityBottom - (Math.max(rh, humidityFloor) - humidityFloor) / (100 - humidityFloor) * (layout.humidityBottom - layout.humidityTop);
+  ticks(humidityFloor, 100, niceStep(100 - humidityFloor, 3)).forEach(rh => {
+    stripElement.appendChild(svg("line", { class: rh === humidityFloor ? "grid grid-base" : "grid", x1: 0, x2: width, y1: humidityY(rh), y2: humidityY(rh) }));
     axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: humidityY(rh) + 4 }, `${rh}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.humidityTop - 14 }, "%"));
+  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.humidityTop - 9 }, "%"));
 
   // Column labels, midnight dividers and rain bars.
   hours.forEach((h, i) => {

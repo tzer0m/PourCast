@@ -5,6 +5,7 @@
   --muted: #6b7686;
   --grid: #e6e9ef;
   --grid-strong: #c9cfd8;
+  --divider: #8b95a3;
   --now: #eef4ff;
   --temperature: #f97316;
   --feels-like: #e0457b;
@@ -25,6 +26,7 @@
     --muted: #8b96a6;
     --grid: #232c38;
     --grid-strong: #344050;
+    --divider: #5a6779;
     --now: #1f2a3a;
     --rain: 96, 165, 250;
     --night: rgba(0, 0, 0, 0.32);
@@ -107,6 +109,11 @@ body {
 .grid {
   stroke: var(--grid);
   stroke-width: 1;
+}
+
+.section-divider {
+  stroke: var(--divider);
+  stroke-width: 2;
 }
 
 .grid-base {
