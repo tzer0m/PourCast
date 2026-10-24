@@ -287,11 +287,24 @@ body {
   fill: var(--humidity);
 }
 
-.rain-range {
+
+.rain-line {
   fill: none;
-  stroke: var(--text);
-  stroke-width: 1.5;
-  opacity: 0.55;
+  stroke: rgb(var(--rain));
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.rain-area {
+  fill: rgba(var(--rain), 0.2);
+}
+
+.range-rain {
+  fill: rgb(var(--rain));
+}
+
+.value-rain {
+  fill: rgb(var(--rain));
 }
 
 .temperature-point {
@@ -304,13 +317,4 @@ body {
   fill: var(--temperature);
 }
 
-.rain-bar {
-  fill: rgba(var(--rain), var(--chance));
-}
 
-.rain-label {
-  fill: rgb(var(--rain));
-  font-size: 10px;
-  font-weight: 600;
-  text-anchor: middle;
-}
