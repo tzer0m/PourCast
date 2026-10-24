@@ -39,6 +39,14 @@ function withDayRow(base) {
   return shifted;
 }
 
+// Removes the UV section and moves the sections below it up. Used when there's no UV data, e.g. the 30 day view.
+function withoutUv(base) {
+  const gap = base.humidityTop - base.uvTop;
+  const shifted = { ...base, uvTop: null, uvBottom: null };
+  ["humidityTop", "humidityBottom", "windTop", "windBottom", "windArrowY", "height"].forEach(key => shifted[key] = base[key] - gap);
+  return shifted;
+}
+
 // Stretches the chart sections to fill the dashboard row on wide screens. The row fills the window height,
 // or the summary column's height if that is taller.
 function fitLayout(base) {
@@ -53,7 +61,7 @@ function fitLayout(base) {
   const available = Math.floor(document.getElementById("dashboard").getBoundingClientRect().height - padding - overhead) - 1;
   const extra = available - base.height;
   if (extra <= 0) return base;
-  const sections = [["temperatureTop", "temperatureBottom"], ["rainTop", "rainBottom"], ["uvTop", "uvBottom"], ["humidityTop", "humidityBottom"], ["windTop", "windBottom"]];
+  const sections = [["temperatureTop", "temperatureBottom"], ["rainTop", "rainBottom"], ["uvTop", "uvBottom"], ["humidityTop", "humidityBottom"], ["windTop", "windBottom"]].filter(([top]) => base[top] !== null);
   const total = sections.reduce((sum, [top, bottom]) => sum + base[bottom] - base[top], 0);
   const scaled = { ...base };
   let offset = 0;
@@ -73,7 +81,9 @@ export function renderChart(hours, daylight, stepHours) {
     return false;
   }
   document.getElementById("dashboard").hidden = false;
-  const layout = fitLayout(stepHours === 6 ? withDayRow(chartLayout) : chartLayout);
+  const hasUv = hours.some(h => h.uvIndexAverage !== null || h.uvIndexClearSkyAverage !== null);
+  const baseLayout = stepHours === 6 ? withDayRow(chartLayout) : chartLayout;
+  const layout = fitLayout(hasUv ? baseLayout : withoutUv(baseLayout));
   const daily = stepHours >= 24;
 
   // Temperature scale snapped to tidy steps.
@@ -146,7 +156,7 @@ export function renderChart(hours, daylight, stepHours) {
   }
 
   // Dividers between chart sections, across both the chart and the axis.
-  [layout.uvTop, layout.humidityTop, layout.rainTop, layout.windTop].forEach(top => {
+  [layout.uvTop, layout.humidityTop, layout.rainTop, layout.windTop].filter(top => top !== null).forEach(top => {
     const y = top - 21;
     stripElement.appendChild(svg("line", { class: "section-divider", x1: 0, x2: width, y1: y, y2: y }));
     axisElement.appendChild(svg("line", { class: "section-divider", x1: 0, x2: layout.axisWidth, y1: y, y2: y }));
@@ -168,11 +178,13 @@ export function renderChart(hours, daylight, stepHours) {
   const uvValues = hours.flatMap(h => [h.uvIndexMax, h.uvIndexClearSkyMax]).filter(u => u !== null);
   const uvScale = Math.max(layout.minimumUvScale, ...uvValues);
   const uvY = uv => layout.uvBottom - uv / uvScale * (layout.uvBottom - layout.uvTop);
-  ticks(0, uvScale, Math.max(1, niceStep(uvScale, 3))).forEach(uv => {
+  (hasUv ? ticks(0, uvScale, Math.max(1, niceStep(uvScale, 3))) : []).forEach(uv => {
     stripElement.appendChild(svg("line", { class: uv === 0 ? "grid grid-base" : "grid", x1: 0, x2: width, y1: uvY(uv), y2: uvY(uv) }));
     axisElement.appendChild(svg("text", { class: "axis-label", x: layout.axisWidth - 4, y: uvY(uv) + 4 }, `${uv}`));
   });
-  axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 9 }, "UV"));
+  if (hasUv) {
+    axisElement.appendChild(svg("text", { class: "axis-unit", x: layout.axisWidth - 4, y: layout.uvTop - 9 }, "UV"));
+  }
 
   // Wind section below rain.
   const windValues = hours.flatMap(h => [h.windSpeedMax, h.windGustMax]).filter(w => w !== null);

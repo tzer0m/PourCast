@@ -130,14 +130,14 @@ function render() {
     loadMonth();
     return;
   }
+  // Hide any loading message before drawing, as the chart sizes itself to the space left on the page.
+  statusElement.hidden = true;
   renderSources(report.sources);
   const hours = hoursInRange(report.hourly, range);
   renderSummary(hours, report.daylight, range);
   if (!renderChart(columnsForRange(report, range), report.daylight, range.stepHours)) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
-  } else {
-    statusElement.hidden = true;
   }
 }
 
