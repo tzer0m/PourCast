@@ -17,6 +17,8 @@ const conditionLabels = {
 };
 
 const statusElement = document.getElementById("status");
+const sourceElement = document.getElementById("source");
+let results = [];
 
 function format(value, unit, digits = 0) {
   return value === null || value === undefined ? "–" : `${value.toFixed(digits)}${unit}`;
@@ -90,15 +92,41 @@ function renderDaily(forecast) {
   document.getElementById("daily").hidden = false;
 }
 
+function renderSources() {
+  sourceElement.replaceChildren();
+  results.forEach((r, i) => {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = r.forecast ? r.source : `${r.source} (Unavailable)`;
+    option.disabled = !r.forecast;
+    sourceElement.appendChild(option);
+  });
+  const errors = results.filter(r => r.error).map(r => `${r.source}: ${r.error}`);
+  document.getElementById("errors").textContent = errors.join(" · ");
+  const first = results.findIndex(r => r.forecast);
+  document.getElementById("sources").hidden = false;
+  if (first < 0) return;
+  sourceElement.value = first;
+  renderSelected();
+}
+
+function renderSelected() {
+  const forecast = results[sourceElement.value]?.forecast;
+  if (!forecast) return;
+  renderCurrent(forecast);
+  renderHourly(forecast);
+  renderDaily(forecast);
+}
+
+sourceElement.addEventListener("change", renderSelected);
+
 async function load(latitude, longitude) {
   statusElement.textContent = "Loading Forecast…";
   try {
     const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const forecast = await response.json();
-    renderCurrent(forecast);
-    renderHourly(forecast);
-    renderDaily(forecast);
+    results = await response.json();
+    renderSources();
     statusElement.hidden = true;
   } catch (error) {
     statusElement.textContent = `Couldn't load the forecast (${error.message}).`;

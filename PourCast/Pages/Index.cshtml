@@ -4,6 +4,11 @@
     ViewData["Title"] = "Home";
 }
 <p id="status">Finding Your Location…</p>
+<section id="sources" hidden>
+    <label for="source">Source</label>
+    <select id="source"></select>
+    <p id="errors" class="source"></p>
+</section>
 <section id="current" hidden>
     <h2>Now</h2>
     <p class="now-temp"><span id="current-temp"></span> <span id="current-condition"></span></p>

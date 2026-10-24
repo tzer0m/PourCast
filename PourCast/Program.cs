@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Options;
 using PourCast.Providers;
 using PourCast.Providers.MetOffice;
+using PourCast.Providers.OpenMeteo;
+using PourCast.Services;
 using System.Text.Json.Serialization;
 
 // Create web application builder.
@@ -11,7 +13,10 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 // Register weather providers.
 builder.Services.AddMemoryCache();
 builder.Services.Configure<MetOfficeOptions>(builder.Configuration.GetSection("Providers:MetOffice"));
-builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>((IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl));
+builder.Services.AddHttpClient<IWeatherProvider, MetOfficeProvider>("MetOffice", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<MetOfficeOptions>>().Value.BaseUrl));
+builder.Services.Configure<OpenMeteoOptions>(builder.Configuration.GetSection("Providers:OpenMeteo"));
+builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoProvider>("OpenMeteo", (IServiceProvider services, HttpClient client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoOptions>>().Value.BaseUrl));
+builder.Services.AddTransient<WeatherService>();
 
 // Create the web application and configure.
 WebApplication app = builder.Build();
