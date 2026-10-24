@@ -4,6 +4,7 @@ import { initSearch } from "/js/search.js";
 import { availableRanges, hoursInRange, columnsForRange } from "/js/range.js";
 
 const statusElement = document.getElementById("status");
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // The week forecast (days and 7 Days) loads straight away; the month forecast only when 30 Days is first picked.
 let lastReport = null;
@@ -58,7 +59,7 @@ function loadMonth() {
   if (!monthLoading) {
     const location = lastLocation;
     const { latitude, longitude } = location;
-    monthLoading = fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&range=month`).then(response => {
+    monthLoading = fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&range=month&timeZone=${encodeURIComponent(timeZone)}`).then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     }).then(report => {
@@ -132,7 +133,7 @@ function render() {
   renderSources(report.sources);
   const hours = hoursInRange(report.hourly, range);
   renderSummary(hours, report.daylight, range);
-  if (!renderChart(columnsForRange(hours, range), report.daylight, range.stepHours)) {
+  if (!renderChart(columnsForRange(report, range), report.daylight, range.stepHours)) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";
   } else {
@@ -164,7 +165,7 @@ async function load(latitude, longitude, name, detail) {
   statusElement.textContent = "Loading Forecast…";
   if (name) showPlace(name, detail);
   try {
-    const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}`);
+    const response = await fetch(`?handler=forecast&latitude=${latitude}&longitude=${longitude}&timeZone=${encodeURIComponent(timeZone)}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     statusElement.hidden = true;

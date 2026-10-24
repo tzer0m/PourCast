@@ -11,6 +11,11 @@ public class HourlyForecast
     public DateTimeOffset Time { get; set; }
 
     /// <summary>
+    /// The ensemble member this hour belongs to, or null for a normal forecast.
+    /// </summary>
+    public string? Member { get; set; }
+
+    /// <summary>
     /// The normalised weather condition.
     /// </summary>
     public WeatherCondition Condition { get; set; }

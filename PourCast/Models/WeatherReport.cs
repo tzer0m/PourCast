@@ -21,6 +21,11 @@ public class WeatherReport
     public List<HourlySummary> Hourly { get; set; } = [];
 
     /// <summary>
+    /// The combined forecast in the range's chart columns: 6 hours for the week, a day for the month.
+    /// </summary>
+    public List<HourlySummary> Columns { get; set; } = [];
+
+    /// <summary>
     /// Sunrise and sunset for the days covered by the forecast.
     /// </summary>
     public List<Daylight> Daylight { get; set; } = [];

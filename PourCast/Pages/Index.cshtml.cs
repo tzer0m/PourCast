@@ -26,10 +26,12 @@ public class IndexModel(WeatherService weatherService, GeocodingService geocodin
     /// <param name="latitude">The latitude of the location.</param>
     /// <param name="longitude">The longitude of the location.</param>
     /// <param name="range">The forecast range, week by default.</param>
+    /// <param name="timeZone">The viewer's IANA time zone, e.g. Europe/London. UTC if missing or unknown.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken, ForecastRange range = ForecastRange.Week)
+    public async Task<JsonResult> OnGetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken, ForecastRange range = ForecastRange.Week, string? timeZone = null)
     {
-        WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, range, cancellationToken);
+        TimeZoneInfo zone = !string.IsNullOrWhiteSpace(timeZone) && TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out TimeZoneInfo? found) ? found! : TimeZoneInfo.Utc;
+        WeatherReport report = await weatherService.GetReportAsync(latitude, longitude, range, zone, cancellationToken);
         return new JsonResult(report);
     }
 

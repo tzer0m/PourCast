@@ -41,6 +41,11 @@ public class Forecast
     public List<HourlyForecast> Hourly { get; set; } = [];
 
     /// <summary>
+    /// Whether the forecast is an ensemble of members, whose spread is shown as percentiles rather than min/max.
+    /// </summary>
+    public bool IsEnsemble { get; set; }
+
+    /// <summary>
     /// The daily forecast.
     /// </summary>
     public List<DailyForecast> Daily { get; set; } = [];

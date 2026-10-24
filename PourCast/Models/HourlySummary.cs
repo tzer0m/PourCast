@@ -1,14 +1,19 @@
 namespace PourCast.Models;
 
 /// <summary>
-/// Combined forecast for a single hour across all sources.
+/// Combined forecast for one period (an hour, 6 hours or a day) across all sources.
 /// </summary>
 public class HourlySummary
 {
     /// <summary>
-    /// The start of the hour in UTC.
+    /// The start of the period in UTC.
     /// </summary>
     public DateTimeOffset Time { get; set; }
+
+    /// <summary>
+    /// The end of the period this summary covers (exclusive).
+    /// </summary>
+    public DateTimeOffset End { get; set; }
 
     /// <summary>
     /// The number of sources with data for this hour.

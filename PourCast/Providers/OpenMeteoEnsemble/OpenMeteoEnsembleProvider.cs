@@ -75,7 +75,7 @@ public class OpenMeteoEnsembleProvider(HttpClient httpClient, IOptions<OpenMeteo
 
         // Each member's hour is added separately, so combining hours gives the mean and the spread across members.
         List<HourlyForecast> result = [];
-        foreach (Dictionary<string, JsonElement> fields in members.Values)
+        foreach ((string member, Dictionary<string, JsonElement> fields) in members)
         {
             for (int i = 0; i < times.Count; i++)
             {
@@ -84,6 +84,7 @@ public class OpenMeteoEnsembleProvider(HttpClient httpClient, IOptions<OpenMeteo
                 result.Add(new HourlyForecast
                 {
                     Time = times[i],
+                    Member = member,
                     Condition = WmoCodes.ToCondition(code is null ? null : (int)code.Value),
                     Temperature = Value(fields, "temperature_2m", i),
                     FeelsLike = Value(fields, "apparent_temperature", i),
@@ -102,6 +103,7 @@ public class OpenMeteoEnsembleProvider(HttpClient httpClient, IOptions<OpenMeteo
             Latitude = root.GetProperty("latitude").GetDouble(),
             Longitude = root.GetProperty("longitude").GetDouble(),
             RetrievedAt = DateTimeOffset.UtcNow,
+            IsEnsemble = true,
             Hourly = result.Where(x => x.Temperature is not null).ToList()
         };
     }
