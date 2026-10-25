@@ -1030,9 +1030,3 @@ a.place {
   background: none;
   color: var(--muted);
 }
-
-.scores-note {
-  margin: 1rem 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
