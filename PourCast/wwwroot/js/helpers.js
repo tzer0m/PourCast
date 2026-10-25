@@ -37,10 +37,11 @@ export function zoneOffset(date, zone = browserZone) {
   return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(date.getTime() / 1000) * 1000;
 }
 
-// 6am in a time zone, a number of days from today there.
+// 6am in a time zone, a number of days from today there. Days run 6am to 6am, so before 6am today is still yesterday.
 export function zonedSixAm(daysFromToday, zone = browserZone) {
   const today = zonedParts(new Date(), zone);
-  const wall = Date.UTC(today.year, today.month - 1, today.day + daysFromToday, 6);
+  const offset = today.hour < 6 ? -1 : 0;
+  const wall = Date.UTC(today.year, today.month - 1, today.day + daysFromToday + offset, 6);
   // Checked twice, in case the offset changes between the guess and the answer (clock changes).
   const guess = wall - zoneOffset(new Date(wall), zone);
   return new Date(wall - zoneOffset(new Date(guess), zone));

@@ -17,7 +17,7 @@ public static class ColumnBuilder
     }
 
     /// <summary>
-    /// The windows for a range's chart, starting at 6am today on the local clock: 6 hour columns for 7 days, or daily columns for 30 days.
+    /// The windows for a range's chart, starting at 6am today on the local clock (yesterday before 6am, so now is always included): 6 hour columns for 7 days, or daily columns for 30 days.
     /// </summary>
     /// <param name="range">The forecast range.</param>
     /// <param name="timeZone">The place's time zone, so columns line up with its clock.</param>
@@ -26,7 +26,8 @@ public static class ColumnBuilder
     {
         int stepHours = range == ForecastRange.Month ? 24 : 6;
         int count = range == ForecastRange.Month ? 30 : 28;
-        DateTime today = TimeZoneInfo.ConvertTime(now, timeZone).Date;
+        DateTime local = TimeZoneInfo.ConvertTime(now, timeZone).DateTime;
+        DateTime today = local.Hour < 6 ? local.Date.AddDays(-1) : local.Date;
         List<DateTimeOffset> edges = Enumerable.Range(0, count + 1).Select(x => ToUtc(today.AddHours(6 + x * stepHours), timeZone)).ToList();
         return Enumerable.Range(0, count).Select(x => new ColumnWindow { Start = edges[x], End = edges[x + 1] }).ToList();
     }
