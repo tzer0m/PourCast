@@ -1,6 +1,6 @@
 # PourCast
 
-[![Deploy](https://github.com/tzer0m/PourCast/actions/workflows/deploy.yml/badge.svg)](https://github.com/tzer0m/PourCast/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/tzer0m/PourCast/actions/workflows/deploy.yml/badge.svg)](https://github.com/tzer0m/PourCast/actions/workflows/deploy.yml) [![Dependabot](https://github.com/tzer0m/PourCast/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/tzer0m/PourCast/actions/workflows/dependabot/dependabot-updates)
 
 A personal weather site that pulls forecasts from a dozen sources and combines them, showing the most likely forecast alongside how much the sources agree. Covers any single day hourly, 7 days and 30 days, for your current location or any searched place.
 
