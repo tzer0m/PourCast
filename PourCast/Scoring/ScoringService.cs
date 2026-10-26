@@ -63,7 +63,7 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
     }
 
     /// <summary>
-    /// Scores one source at one day ahead, or null if there weren't enough hours for any metric.
+    /// Scores one source at one day ahead, or null if there weren't enough hours for temperature.
     /// </summary>
     /// <param name="day">How many days ahead.</param>
     /// <param name="matches">The source's matched hours for that day.</param>
@@ -81,7 +81,9 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
         // Rain uses the chance of rain where given, otherwise whether any rain was predicted.
         List<(double Chance, bool Raining)> rain = [.. matches.Select(x => (Chance: RainChance(x), x.ObservedRaining)).Where(x => x.Chance is not null).Select(x => (x.Chance!.Value, x.ObservedRaining))];
         AddMetric(metrics, ScoreMetric.Rain, [.. rain.Select(x => Math.Pow(x.Chance - (x.Raining ? 1 : 0), 2))]);
-        if (metrics.Count == 0)
+        // A day is only scored once temperature has enough hours, so a day isn't judged on rain alone while the
+        // other metrics are still collecting, e.g. sources with 3 hourly readings but hourly rain.
+        if (!metrics.ContainsKey(ScoreMetric.Temperature))
         {
             return null;
         }
