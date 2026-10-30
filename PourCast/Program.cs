@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using PourCast.Endpoints;
 using PourCast.Providers;
 using PourCast.Providers.MetNorway;
 using PourCast.Providers.MetOffice;
@@ -51,6 +52,7 @@ builder.Services.Configure<OpenMeteoEnsembleOptions>(builder.Configuration.GetSe
 builder.Services.AddHttpClient<IWeatherProvider, OpenMeteoEnsembleProvider>("OpenMeteoEnsemble", (services, client) => client.BaseAddress = new Uri(services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value.BaseUrl)).AddHttpMessageHandler(services => UsageHandlerFor(services, services.GetRequiredService<IOptions<OpenMeteoEnsembleOptions>>().Value));
 builder.Services.Configure<CombiningOptions>(builder.Configuration.GetSection("Combining"));
 builder.Services.AddTransient<WeatherService>();
+builder.Services.AddTransient<WidgetService>();
 
 // Register place search.
 builder.Services.Configure<GeocodingOptions>(builder.Configuration.GetSection("Geocoding"));
@@ -78,6 +80,7 @@ app.UseRouting();
 app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
+app.MapGet("/api/widget", WidgetEndpoint.GetAsync);
 app.Run();
 
 // Registers an Open-Meteo provider from its own appsettings section, so the same provider can be added once per weather model.
