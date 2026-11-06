@@ -36,6 +36,21 @@ public class WidgetResponse
     public double? Low { get; set; }
 
     /// <summary>
+    /// Whether it is raining in the current hour.
+    /// </summary>
+    public bool IsRaining { get; set; }
+
+    /// <summary>
+    /// When the next rain starts, or null if it's raining now or none is forecast.
+    /// </summary>
+    public DateTimeOffset? RainStart { get; set; }
+
+    /// <summary>
+    /// When the current rain stops, or null if it isn't raining or it lasts beyond the forecast window.
+    /// </summary>
+    public DateTimeOffset? RainEnd { get; set; }
+
+    /// <summary>
     /// The next few hours.
     /// </summary>
     public List<WidgetHour> Hourly { get; set; } = [];

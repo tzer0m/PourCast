@@ -24,4 +24,9 @@ public class WidgetDay
     /// The highest temperature in °C.
     /// </summary>
     public double? High { get; set; }
+
+    /// <summary>
+    /// The highest UV index of the day.
+    /// </summary>
+    public double? UvIndex { get; set; }
 }
