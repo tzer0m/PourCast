@@ -18,7 +18,7 @@ jobs:
       - name: Deploy
         run: |
           sudo systemctl stop PourCast.service
-          rsync -a --delete --exclude usage.json publish/ /opt/pourcast/
+          rsync -a --delete --exclude usage.json publish/ /home/tzer0m/Services/PourCast/
           sudo systemctl start PourCast.service
 
       - name: Check
