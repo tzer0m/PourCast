@@ -79,7 +79,7 @@ function scrollChart(left, behavior = "auto") {
   scrollElement.scrollTo({ left, behavior });
 }
 
-// Selects whichever day is in the middle of the chart as it's scrolled.
+// Selects whichever day is in the middle of the chart as it's scrolled, or when several days show at once, the one at the left.
 let scrollFrame = null;
 scrollElement.addEventListener("scroll", () => {
   if (!followingScroll) {
@@ -90,7 +90,7 @@ scrollElement.addEventListener("scroll", () => {
   if (!dayView || scrollFrame) return;
   scrollFrame = requestAnimationFrame(() => {
     scrollFrame = null;
-    const column = Math.floor((scrollElement.scrollLeft + scrollElement.clientWidth / 2) / dayView.columnWidth);
+    const column = Math.floor((scrollElement.scrollLeft + Math.min(scrollElement.clientWidth / 2, 12 * dayView.columnWidth)) / dayView.columnWidth);
     const day = dayView.ranges.filter(r => dayView.starts.get(r.key) <= column).pop() ?? dayView.ranges[0];
     if (day.key !== selectedRange) showDay(day);
   });
@@ -258,7 +258,8 @@ function render() {
 // Draws every day as one chart, a day wide on screen, and scrolls to the selected day.
 function renderDays(report, days, range) {
   const columns = hoursInRange(report.hourly, { start: days[0].start, end: days[days.length - 1].end });
-  const chart = renderChart(columns, report.daylight, 1, lastLocation.zone, 24);
+  // A day fills a phone screen, but wide screens show as many hours as fit at about 55px each.
+  const chart = renderChart(columns, report.daylight, 1, lastLocation.zone, width => window.matchMedia("(max-width: 900px)").matches ? 24 : Math.max(24, Math.floor(width / 55)));
   if (!chart) {
     statusElement.hidden = false;
     statusElement.textContent = "No forecast data available for this range.";

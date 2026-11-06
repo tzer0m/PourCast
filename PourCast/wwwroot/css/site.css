@@ -361,7 +361,7 @@ body {
 .dashboard {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(17rem, 20%) minmax(0, 1fr);
+  grid-template-columns: minmax(14rem, 17%) minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
 }

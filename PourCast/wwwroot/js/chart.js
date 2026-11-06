@@ -6,13 +6,13 @@ const stripElement = document.getElementById("strip");
 
 // Chart geometry in pixels, before stretching to fit.
 const chartLayout = {
-  minimumColumnWidth: 56,
+  minimumColumnWidth: 32,
   axisWidth: 28,
   minimumUvScale: 1,
   height: 690,
   timeY: 22,
   iconY: 30,
-  iconSize: 36,
+  iconSize: 26,
   sunY: 88,
   temperatureTop: 106,
   temperatureBottom: 236,
@@ -93,6 +93,7 @@ function fitLayout(base) {
 }
 
 // Draws the chart for a set of columns, each stepHours long, sized so visibleColumns fill the width and the rest scroll.
+// visibleColumns can be a function, given the available width in pixels, for when how many fit depends on the screen.
 // Days are divided in the place's time zone. Returns the column width and the index of the current column, or null if there are no columns.
 export function renderChart(hours, daylight, stepHours, zone, visibleColumns = hours.length) {
   if (hours.length === 0) {
@@ -107,7 +108,8 @@ export function renderChart(hours, daylight, stepHours, zone, visibleColumns = h
   stripElement.setAttribute("width", 0);
   axisElement.setAttribute("width", screenLayout.axisWidth);
   // Rounded down to a hundredth of a pixel so the total never exceeds the space and triggers a scrollbar.
-  const columnWidth = Math.max(screenLayout.minimumColumnWidth, Math.floor(scroll.clientWidth / visibleColumns * 100) / 100);
+  const visible = typeof visibleColumns === "function" ? visibleColumns(scroll.clientWidth) : visibleColumns;
+  const columnWidth = Math.max(screenLayout.minimumColumnWidth, Math.floor(scroll.clientWidth / visible * 100) / 100);
   const width = hours.length * columnWidth;
   stripElement.setAttribute("width", width);
 
