@@ -1,17 +1,15 @@
 using PourCast.Models;
-using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace PourCast.Services;
 
 /// <summary>
-/// Builds the compact weather summary shown by the Tidgets home screen widget.
+/// Builds the current, hourly and daily weather shown by the Tidgets home screen widget.
 /// </summary>
 /// <param name="weatherService">The weather service.</param>
-public partial class WidgetService(WeatherService weatherService)
+public class WidgetService(WeatherService weatherService)
 {
     /// <summary>
-    /// Gets the widget summary for a place.
+    /// Gets the widget weather for a place.
     /// </summary>
     /// <param name="latitude">The latitude of the place.</param>
     /// <param name="longitude">The longitude of the place.</param>
@@ -27,34 +25,46 @@ public partial class WidgetService(WeatherService weatherService)
         DateTimeOffset now = DateTimeOffset.UtcNow;
         List<HourlySummary> upcoming = [.. report.Hourly.Where(x => x.End > now).OrderBy(x => x.Time)];
         HourlySummary? current = upcoming.FirstOrDefault();
-        List<double> temperatures = [.. upcoming.Where(x => x.Time < now.AddHours(24) && x.TemperatureAverage is not null).Select(x => x.TemperatureAverage!.Value)];
-        List<string> parts = [];
-        if (current is not null && current.Condition != WeatherCondition.Unknown)
+        List<double> next24 = [.. upcoming.Where(x => x.Time < now.AddHours(24) && x.TemperatureAverage is not null).Select(x => x.TemperatureAverage!.Value)];
+
+        // Days after today, grouped by the place's own calendar.
+        DateOnly today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime);
+        List<WidgetDay> daily = [.. report.Hourly.Where(x => x.TemperatureAverage is not null).GroupBy(x => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(x.Time, zone).DateTime)).Where(x => x.Key > today).OrderBy(x => x.Key).Take(5).Select(x => ToDay(x.Key, [.. x], zone))];
+        return new WidgetResponse
         {
-            parts.Add(WordBoundary().Replace(current.Condition.ToString(), " "));
-        }
-        if (temperatures.Count > 0)
-        {
-            parts.Add($"H {Format(temperatures.Max())} L {Format(temperatures.Min())}");
-        }
-        string title = !string.IsNullOrWhiteSpace(name) ? name : report.LocationName ?? "PourCast";
-        string value = current?.TemperatureAverage is double temperature ? $"{Format(temperature)}C" : "--";
-        return new WidgetResponse { Title = title, Value = value, Subtitle = string.Join(" · ", parts) };
+            Place = !string.IsNullOrWhiteSpace(name) ? name : report.LocationName ?? "PourCast",
+            Temperature = current?.TemperatureAverage,
+            Condition = (current?.Condition ?? WeatherCondition.Unknown).ToString(),
+            IsDay = IsDay(report, now),
+            High = next24.Count > 0 ? next24.Max() : null,
+            Low = next24.Count > 0 ? next24.Min() : null,
+            Hourly = [.. upcoming.Take(6).Select(x => new WidgetHour { Time = x.Time, Temperature = x.TemperatureAverage, Condition = x.Condition.ToString(), IsDay = IsDay(report, x.Time) })],
+            Daily = daily
+        };
     }
 
     /// <summary>
-    /// Formats a temperature as a whole number with a degree sign.
+    /// Summarises a day's hours as a low, a high and its main daytime condition.
     /// </summary>
-    /// <param name="temperature">The temperature in °C.</param>
-    private static string Format(double temperature)
+    /// <param name="date">The date.</param>
+    /// <param name="hours">The day's hours, all with a temperature.</param>
+    /// <param name="zone">The place's time zone.</param>
+    private static WidgetDay ToDay(DateOnly date, List<HourlySummary> hours, TimeZoneInfo zone)
     {
-        // Adding zero turns a rounded -0 into 0.
-        return string.Create(CultureInfo.InvariantCulture, $"{Math.Round(temperature, MidpointRounding.AwayFromZero) + 0d}°");
+        // The condition is the commonest one between 7am and 7pm, with the more severe weather winning a tie.
+        List<HourlySummary> daytime = [.. hours.Where(x => TimeZoneInfo.ConvertTime(x.Time, zone).Hour is >= 7 and < 19)];
+        WeatherCondition condition = (daytime.Count > 0 ? daytime : hours).Where(x => x.Condition != WeatherCondition.Unknown).GroupBy(x => x.Condition).OrderByDescending(x => x.Count()).ThenByDescending(x => x.Key).Select(x => x.Key).FirstOrDefault();
+        return new WidgetDay { Date = date, Condition = condition.ToString(), Low = hours.Min(x => x.TemperatureAverage), High = hours.Max(x => x.TemperatureAverage) };
     }
 
     /// <summary>
-    /// Matches the gap between a lowercase and an uppercase letter, to split a name like PartlyCloudy into words.
+    /// Works out whether the sun is up at a time, from the report's sunrise and sunset times.
     /// </summary>
-    [GeneratedRegex("(?<=[a-z])(?=[A-Z])")]
-    private static partial Regex WordBoundary();
+    /// <param name="report">The weather report.</param>
+    /// <param name="time">The time to check.</param>
+    private static bool IsDay(WeatherReport report, DateTimeOffset time)
+    {
+        DateOnly date = DateOnly.FromDateTime(time.UtcDateTime);
+        return report.Daylight.Any(x => (x.AlwaysUp && x.Date == date) || (x.Sunrise is not null && x.Sunset is not null && time >= x.Sunrise && time < x.Sunset));
+    }
 }

@@ -1,22 +1,47 @@
 namespace PourCast.Models;
 
 /// <summary>
-/// The compact weather summary shown by the Tidgets home screen widget.
+/// The weather shown by the Tidgets home screen widget.
 /// </summary>
 public class WidgetResponse
 {
     /// <summary>
-    /// The widget title, usually the place name.
+    /// The place name.
     /// </summary>
-    public string Title { get; set; } = string.Empty;
+    public string Place { get; set; } = string.Empty;
 
     /// <summary>
-    /// The main value, the current temperature.
+    /// The current temperature in °C.
     /// </summary>
-    public string Value { get; set; } = string.Empty;
+    public double? Temperature { get; set; }
 
     /// <summary>
-    /// The supporting line, the condition with today's high and low.
+    /// The current condition, as the name of a WeatherCondition.
     /// </summary>
-    public string Subtitle { get; set; } = string.Empty;
+    public string Condition { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the sun is up now.
+    /// </summary>
+    public bool IsDay { get; set; }
+
+    /// <summary>
+    /// The highest temperature in the next 24 hours, in °C.
+    /// </summary>
+    public double? High { get; set; }
+
+    /// <summary>
+    /// The lowest temperature in the next 24 hours, in °C.
+    /// </summary>
+    public double? Low { get; set; }
+
+    /// <summary>
+    /// The next few hours.
+    /// </summary>
+    public List<WidgetHour> Hourly { get; set; } = [];
+
+    /// <summary>
+    /// The next few days, starting tomorrow.
+    /// </summary>
+    public List<WidgetDay> Daily { get; set; } = [];
 }
