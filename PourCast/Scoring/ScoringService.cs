@@ -32,6 +32,32 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
     }
 
     /// <summary>
+    /// Works out each source's average error and weight for each day ahead and metric, for the weighted forecast.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    public async Task<Dictionary<(string Source, int Day, ScoreMetric Metric), SourceCorrection>> GetCorrectionsAsync(CancellationToken cancellationToken)
+    {
+        ScoringOptions settings = options.Value;
+        List<MatchedHour> matches = await GetMatchesAsync(cancellationToken);
+        Dictionary<(string Source, int Day, ScoreMetric Metric), SourceCorrection> corrections = [];
+
+        // The combined forecasts are left out, so they're only built from the real sources.
+        foreach (IGrouping<(string Source, int Day), MatchedHour> group in matches.Where(x => x.Source != settings.CombinedSource && x.Source != settings.WeightedSource).GroupBy(x => (x.Source, Day: x.LeadHours / 24 + 1)))
+        {
+            AddCorrection(corrections, group.Key, ScoreMetric.Temperature, [.. group.Where(x => x.PredictedTemperature is not null && x.ObservedTemperature is not null).Select(x => x.PredictedTemperature!.Value - x.ObservedTemperature!.Value)], true);
+            AddCorrection(corrections, group.Key, ScoreMetric.FeelsLike, [.. group.Where(x => x.PredictedFeelsLike is not null && x.ObservedFeelsLike is not null).Select(x => x.PredictedFeelsLike!.Value - x.ObservedFeelsLike!.Value)], true);
+            AddCorrection(corrections, group.Key, ScoreMetric.Humidity, [.. group.Where(x => x.PredictedHumidity is not null && x.ObservedHumidity is not null).Select(x => x.PredictedHumidity!.Value - x.ObservedHumidity!.Value)], true);
+            AddCorrection(corrections, group.Key, ScoreMetric.WindSpeed, [.. group.Where(x => x.PredictedWindSpeed is not null && x.ObservedWindSpeed is not null).Select(x => x.PredictedWindSpeed!.Value - x.ObservedWindSpeed!.Value)], true);
+            AddCorrection(corrections, group.Key, ScoreMetric.WindGust, [.. group.Where(x => x.PredictedWindGust is not null && x.ObservedWindGust is not null).Select(x => x.PredictedWindGust!.Value - x.ObservedWindGust!.Value)], true);
+
+            // Direction and rain are only weighted, not corrected: a direction offset is rarely consistent, and rain chances need calibrating rather than shifting.
+            AddCorrection(corrections, group.Key, ScoreMetric.WindDirection, [.. group.Where(x => x.PredictedWindDirection is not null && x.ObservedWindDirection is not null && x.ObservedWindSpeed >= settings.DirectionMinimumWind).Select(x => AngleBetween(x.PredictedWindDirection!.Value, x.ObservedWindDirection!.Value))], false);
+            AddCorrection(corrections, group.Key, ScoreMetric.Rain, [.. group.Select(x => (Chance: RainChance(x), x.ObservedRaining)).Where(x => x.Chance is not null).Select(x => x.Chance!.Value - (x.ObservedRaining ? 1 : 0))], false);
+        }
+        return corrections;
+    }
+
+    /// <summary>
     /// Counts the observed hours in the scoring window.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -134,6 +160,28 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
         }
         double? hitRate = rain.Count >= settings.MinimumMatches ? rain.Count(x => (x.Chance >= 0.5) == x.Raining) * 100.0 / rain.Count : null;
         return new DayScore { Day = day, Overall = metrics.Values.Average(x => x.Score), Matches = matches.Count, RainHitRate = hitRate, Metrics = metrics };
+    }
+
+    /// <summary>
+    /// Adds a source's correction for a day ahead and metric, if there are enough hours to judge it.
+    /// </summary>
+    /// <param name="corrections">The corrections to add to.</param>
+    /// <param name="key">The source and day ahead.</param>
+    /// <param name="metric">The metric.</param>
+    /// <param name="errors">The predicted minus observed value for each hour.</param>
+    /// <param name="correctBias">Whether the average error is taken off, or only used for the weight.</param>
+    private void AddCorrection(Dictionary<(string Source, int Day, ScoreMetric Metric), SourceCorrection> corrections, (string Source, int Day) key, ScoreMetric metric, List<double> errors, bool correctBias)
+    {
+        ScoringOptions settings = options.Value;
+        if (errors.Count < settings.MinimumMatches)
+        {
+            return;
+        }
+
+        // The average error is scaled down while there are few hours, so it grows into the full correction as evidence builds.
+        double bias = correctBias ? errors.Average() * errors.Count / (errors.Count + settings.BiasShrinkHours) : 0;
+        double meanSquare = errors.Average(x => Math.Pow(x - bias, 2));
+        corrections[(key.Source, key.Day, metric)] = new SourceCorrection { Bias = bias, Weight = 1 / Math.Max(meanSquare, 0.0001), Matches = errors.Count };
     }
 
     /// <summary>

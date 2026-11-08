@@ -2,12 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PourCast.Models;
 using PourCast.Scoring.Data;
+using PourCast.Scoring.Models;
 using PourCast.Services;
 
 namespace PourCast.Scoring;
 
 /// <summary>
-/// Records every source's forecast, and the combined forecast, at each snapshot hour so they can be scored against observations.
+/// Records every source's forecast, and the combined and weighted forecasts, at each snapshot hour so they can be scored against observations.
 /// A snapshot missed while the app was down is taken as soon as it starts, if the next snapshot hour hasn't arrived yet.
 /// </summary>
 /// <param name="scopeFactory">Creates a scope for each snapshot, for the weather service and database context.</param>
@@ -79,6 +80,24 @@ public class SnapshotService(IServiceScopeFactory scopeFactory, IOptions<Scoring
         List<HourlySummary> combined = ForecastCombiner.Combine(forecasts, ColumnBuilder.Hourly(forecasts), combiningOptions.Value);
         List<Prediction> combinedPredictions = [.. combined.Where(x => x.Time >= issuedAt && x.Time < end && x.TemperatureAverage is not null).Select(x => new Prediction { Time = x.Time.ToUniversalTime(), LeadHours = LeadHours(issuedAt, x.Time), Temperature = x.TemperatureAverage, FeelsLike = x.FeelsLikeAverage, Humidity = x.HumidityAverage, WindSpeed = x.WindSpeedAverage, WindGust = x.WindGustAverage, WindDirection = x.WindDirectionAverage, Precipitation = x.PrecipitationAverage, PrecipitationProbability = x.PrecipitationProbabilityAverage })];
         db.Snapshots.Add(new Snapshot { Source = settings.CombinedSource, IssuedAt = issuedAt, Predictions = combinedPredictions });
+
+        // The weighted forecast is only recorded for scoring, to see whether correcting and weighting the sources beats PourCast. It's not shown on the site.
+        if (!string.IsNullOrWhiteSpace(settings.WeightedSource))
+        {
+            try
+            {
+                Dictionary<(string Source, int Day, ScoreMetric Metric), SourceCorrection> corrections = await scope.ServiceProvider.GetRequiredService<ScoringService>().GetCorrectionsAsync(cancellationToken);
+                List<Prediction> weightedPredictions = WeightedCombiner.Combine(forecasts, corrections, issuedAt, end, settings, combiningOptions.Value);
+                if (weightedPredictions.Count > 0)
+                {
+                    db.Snapshots.Add(new Snapshot { Source = settings.WeightedSource, IssuedAt = issuedAt, Predictions = weightedPredictions });
+                }
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(exception, "Couldn't build the weighted forecast");
+            }
+        }
         await db.SaveChangesAsync(cancellationToken);
         if (logger.IsEnabled(LogLevel.Information))
         {

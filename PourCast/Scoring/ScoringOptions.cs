@@ -58,6 +58,21 @@ public class ScoringOptions
     public string CombinedSource { get; set; } = string.Empty;
 
     /// <summary>
+    /// The source name the weighted forecast is recorded under, or empty to not record it.
+    /// </summary>
+    public string WeightedSource { get; set; } = string.Empty;
+
+    /// <summary>
+    /// How much of each source's weight in the weighted forecast is an equal share rather than by accuracy, from 0 to 1.
+    /// </summary>
+    public double EqualWeightShare { get; set; } = 0.5;
+
+    /// <summary>
+    /// How many hours of history it takes for half of a source's average error to be corrected, so a few odd days don't overcorrect.
+    /// </summary>
+    public int BiasShrinkHours { get; set; } = 48;
+
+    /// <summary>
     /// How many days of predictions are scored.
     /// </summary>
     public int WindowDays { get; set; } = 30;
