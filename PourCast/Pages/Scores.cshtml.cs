@@ -18,6 +18,11 @@ public class ScoresModel(ScoringService scoringService, IOptions<ScoringOptions>
     public List<SourceScore> Scores { get; private set; } = [];
 
     /// <summary>
+    /// How many days ahead, from day 1, every scored source covers.
+    /// </summary>
+    public int CommonDays { get; private set; }
+
+    /// <summary>
     /// How many observed hours are in the scoring window.
     /// </summary>
     public int ObservedHours { get; private set; }
@@ -38,8 +43,20 @@ public class ScoresModel(ScoringService scoringService, IOptions<ScoringOptions>
     /// <param name="cancellationToken">The cancellation token.</param>
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
-        Scores = await scoringService.GetScoresAsync(cancellationToken);
+        ScoreBoard board = await scoringService.GetScoresAsync(cancellationToken);
+        Scores = board.Sources;
+        CommonDays = board.CommonDays;
         ObservedHours = await scoringService.GetObservedHoursAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Explains how the overall score is worked out.
+    /// </summary>
+    /// <param name="commonLabel">The like for like column's heading, or null if it isn't shown.</param>
+    public string ScoresNote(string? commonLabel)
+    {
+        string note = "Overall compares each source with the others on the same days and metrics, so sources with shorter forecasts or fewer metrics aren't flattered by skipping the harder parts.";
+        return commonLabel is null ? note : $"{note} {commonLabel} is the plain average over the days every source covers.";
     }
 
     /// <summary>

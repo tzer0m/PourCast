@@ -1,9 +1,12 @@
 @page
 @model ScoresModel
 @using PourCast.Scoring.Models
+@using System.Globalization
 @{
     ViewData["Title"] = "Forecast Accuracy";
     int days = Model.Settings.SnapshotDays;
+    bool showCommon = Model.CommonDays > 0 && Model.CommonDays < days;
+    string commonLabel = Model.CommonDays == 1 ? "Day 1" : $"Days 1–{Model.CommonDays}";
 }
 <header class="topbar">
     <a class="place" href="/">
@@ -23,11 +26,15 @@
             <table class="scores">
                 <thead>
                     <tr>
-                        <th class="scores-source">Source</th>
-                        <th>Overall</th>
+                        <th class="scores-source" aria-sort="none"><button type="button" class="scores-sort" data-type="text">Source</button></th>
+                        <th aria-sort="descending" title="Compared with the other sources on the same days and metrics"><button type="button" class="scores-sort">Overall</button></th>
+                        @if (showCommon)
+                        {
+                            <th class="scores-common" aria-sort="none" title="Plain average over the days every source covers"><button type="button" class="scores-sort">@commonLabel</button></th>
+                        }
                         @for (int day = 1; day <= days; day++)
                         {
-                            <th>Day @day</th>
+                            <th aria-sort="none"><button type="button" class="scores-sort">Day @day</button></th>
                         }
                     </tr>
                 </thead>
@@ -40,11 +47,23 @@
                             </th>
                             @if (source.Overall is double overall)
                             {
-                                <td class="score score-overall" style="--score: @overall.ToString("0")">@overall.ToString("0")</td>
+                                string skill = source.Skill is double points ? $"{points:+0.0;-0.0;0.0} vs the other sources on the same days and metrics" : "Nothing to compare with yet";
+                                <td class="score score-overall" style="--score: @overall.ToString("0")" title="@skill" data-value="@overall.ToString(CultureInfo.InvariantCulture)">@overall.ToString("0")</td>
                             }
                             else
                             {
                                 <td class="score score-empty">Collecting</td>
+                            }
+                            @if (showCommon)
+                            {
+                                if (source.CommonOverall is double common)
+                                {
+                                    <td class="score scores-common" style="--score: @common.ToString("0")" data-value="@common.ToString(CultureInfo.InvariantCulture)">@common.ToString("0")</td>
+                                }
+                                else
+                                {
+                                    <td class="score score-empty scores-common">–</td>
+                                }
                             }
                             @for (int day = 1; day <= days; day++)
                             {
@@ -55,7 +74,7 @@
                                 }
                                 else
                                 {
-                                    <td class="score" style="--score: @dayScore.Overall.ToString("0")" title="@dayScore.Matches Hours Compared">@dayScore.Overall.ToString("0")</td>
+                                    <td class="score" style="--score: @dayScore.Overall.ToString("0")" title="@dayScore.Matches Hours Compared" data-value="@dayScore.Overall.ToString(CultureInfo.InvariantCulture)">@dayScore.Overall.ToString("0")</td>
                                 }
                             }
                         </tr>
@@ -64,6 +83,10 @@
                             <tr class="scores-detail" hidden>
                                 <th class="scores-source scores-metric">@ScoresModel.MetricName(metric)</th>
                                 <td></td>
+                                @if (showCommon)
+                                {
+                                    <td class="scores-common"></td>
+                                }
                                 @for (int day = 1; day <= days; day++)
                                 {
                                     MetricScore? metricScore = source.Days.FirstOrDefault(x => x.Day == day)?.Metrics.GetValueOrDefault(metric);
@@ -81,6 +104,10 @@
                         <tr class="scores-detail" hidden>
                             <th class="scores-source scores-metric">Rain Hit Rate</th>
                             <td></td>
+                            @if (showCommon)
+                            {
+                                <td class="scores-common"></td>
+                            }
                             @for (int day = 1; day <= days; day++)
                             {
                                 double? hitRate = source.Days.FirstOrDefault(x => x.Day == day)?.RainHitRate;
@@ -91,6 +118,7 @@
                 }
             </table>
         </div>
+        <p class="scores-note">@Model.ScoresNote(showCommon ? commonLabel : null)</p>
     }
 </section>
 @section Scripts {

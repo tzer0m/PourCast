@@ -39,7 +39,7 @@ public class IndexModel(WeatherService weatherService, GeocodingService geocodin
         // Scores are extra, so the forecast is still returned if the scoring database can't be reached.
         try
         {
-            Dictionary<string, double?> scores = (await scoringService.GetScoresAsync(cancellationToken)).ToDictionary(x => x.Source, x => x.Overall);
+            Dictionary<string, double?> scores = (await scoringService.GetScoresAsync(cancellationToken)).Sources.ToDictionary(x => x.Source, x => x.Overall);
             foreach (ProviderResult source in report.Sources)
             {
                 source.Score = scores.GetValueOrDefault(source.Source);

@@ -18,15 +18,17 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
     /// Gets every source's scores over the scoring window, best first. Sources without enough data come last with no overall score.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
-    public async Task<List<SourceScore>> GetScoresAsync(CancellationToken cancellationToken)
+    public async Task<ScoreBoard> GetScoresAsync(CancellationToken cancellationToken)
     {
-        List<SourceScore>? scores = await cache.GetOrCreateAsync<List<SourceScore>>("scores", async entry =>
+        ScoreBoard? board = await cache.GetOrCreateAsync<ScoreBoard>("scores", async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(options.Value.ScoreCacheMinutes);
             List<MatchedHour> matches = await GetMatchesAsync(cancellationToken);
-            return [.. matches.GroupBy(x => x.Source).Select(x => ScoreSource(x.Key, [.. x])).OrderByDescending(x => x.Overall.HasValue).ThenByDescending(x => x.Overall).ThenBy(x => x.Source)];
+            List<SourceScore> sources = [.. matches.GroupBy(x => x.Source).Select(x => ScoreSource(x.Key, [.. x]))];
+            int commonDays = CompareSources(sources);
+            return new ScoreBoard { Sources = [.. sources.OrderByDescending(x => x.Overall.HasValue).ThenByDescending(x => x.Overall).ThenBy(x => x.Source)], CommonDays = commonDays };
         });
-        return scores ?? [];
+        return board ?? new ScoreBoard();
     }
 
     /// <summary>
@@ -52,14 +54,57 @@ public class ScoringService(ScoringDbContext db, IOptions<ScoringOptions> option
     }
 
     /// <summary>
-    /// Scores one source for each day ahead, and overall as the average of the days that had enough hours.
+    /// Scores one source for each day ahead that had enough hours.
     /// </summary>
     /// <param name="source">The forecast source.</param>
     /// <param name="matches">The source's matched hours.</param>
     private SourceScore ScoreSource(string source, List<MatchedHour> matches)
     {
         List<DayScore> days = [.. matches.GroupBy(x => x.LeadHours / 24 + 1).OrderBy(x => x.Key).Select(x => ScoreDay(x.Key, [.. x])).Where(x => x is not null).Select(x => x!)];
-        return new SourceScore { Source = source, Overall = days.Count > 0 ? days.Average(x => x.Overall) : null, Days = days };
+        return new SourceScore { Source = source, Days = days };
+    }
+
+    /// <summary>
+    /// Works out each source's overall score against the others on the same days and metrics, and returns how many days every source covers.
+    /// </summary>
+    /// <param name="sources">Every source's day scores.</param>
+    private static int CompareSources(List<SourceScore> sources)
+    {
+        // Later days and harder metrics score lower for everyone, so each source is judged against the average of the
+        // sources that also have that day and metric. Otherwise sources with short forecasts, or without wind direction
+        // or gusts, would look better just for skipping the hard parts.
+        Dictionary<(int Day, ScoreMetric Metric), double> field = sources.SelectMany(x => x.Days).SelectMany(x => x.Metrics.Select(y => (x.Day, Metric: y.Key, y.Value.Score))).GroupBy(x => (x.Day, x.Metric)).Where(x => x.Count() >= 2).ToDictionary(x => x.Key, x => x.Average(y => y.Score));
+        double? baseline = field.Count > 0 ? field.GroupBy(x => x.Key.Day).Average(x => x.Average(y => y.Value)) : null;
+        foreach (SourceScore source in sources)
+        {
+            List<double> skills = [.. source.Days.Select(x => x.Metrics.Where(y => field.ContainsKey((x.Day, y.Key))).Select(y => y.Value.Score - field[(x.Day, y.Key)])).Where(x => x.Any()).Select(x => x.Average())];
+            source.Skill = skills.Count > 0 ? skills.Average() : null;
+
+            // The overall score is the field's average over every day and metric, plus how far ahead or behind the source was.
+            source.Overall = baseline is double average && source.Skill is double skill ? Math.Clamp(average + skill, 0, 100) : source.Days.Count > 0 ? source.Days.Average(x => x.Overall) : null;
+        }
+
+        // The plain average over the days every source has, as a like for like check on the overall score.
+        int commonDays = sources.Where(x => x.Days.Count > 0).Select(CoveredDays).DefaultIfEmpty(0).Min();
+        foreach (SourceScore source in sources.Where(x => commonDays > 0 && x.Days.Count > 0))
+        {
+            source.CommonOverall = source.Days.Where(x => x.Day <= commonDays).Average(x => x.Overall);
+        }
+        return commonDays;
+    }
+
+    /// <summary>
+    /// How many days in a row, from day 1, a source has scores for.
+    /// </summary>
+    /// <param name="source">The source's scores.</param>
+    private static int CoveredDays(SourceScore source)
+    {
+        int days = 0;
+        while (source.Days.Any(x => x.Day == days + 1))
+        {
+            days++;
+        }
+        return days;
     }
 
     /// <summary>

@@ -1005,6 +1005,31 @@ a.place {
   content: "▾";
 }
 
+.scores-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.scores-sort:hover,
+[aria-sort="ascending"] > .scores-sort,
+[aria-sort="descending"] > .scores-sort {
+  color: var(--text);
+}
+
+[aria-sort="ascending"] > .scores-sort::after {
+  content: " ▴";
+}
+
+[aria-sort="descending"] > .scores-sort::after {
+  content: " ▾";
+}
+
 .scores-metric {
   padding-left: 1.6rem !important;
   color: var(--muted);
@@ -1029,4 +1054,15 @@ a.place {
 .score-plain {
   background: none;
   color: var(--muted);
+}
+
+/* The like for like column sits apart from the per-day columns. */
+.scores .scores-common {
+  border-right: 1px solid var(--grid-strong);
+}
+
+.scores-note {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
